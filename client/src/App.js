@@ -9,6 +9,7 @@ import Register from './pages/Register';
 import MusicRoom from './pages/MusicRoom';
 import Library from './pages/Library';
 import { AuthProvider } from './context/AuthContext';
+import { Toaster } from 'react-hot-toast';
 
 const theme = createTheme({
   palette: {
@@ -27,6 +28,7 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
+        <Toaster position="top-right" />
         <Router>
           <Navbar />
           <Routes>

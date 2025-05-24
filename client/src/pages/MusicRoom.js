@@ -26,8 +26,7 @@ import {
 import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-
-axios.defaults.baseURL = 'http://localhost:5001';
+import { toast } from 'react-hot-toast';
 
 const MusicRoom = () => {
   const { roomId } = useParams();
@@ -38,14 +37,15 @@ const MusicRoom = () => {
   const [description, setDescription] = useState('');
   const [generatedUrl, setGeneratedUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [collaborators, setCollaborators] = useState([]);
   const [musicHistory, setMusicHistory] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = useRef(new Audio());
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5001');
+    const newSocket = io(process.env.REACT_APP_API_URL || 'http://localhost:5001');
     setSocket(newSocket);
 
     newSocket.emit('joinRoom', roomId);
@@ -117,36 +117,47 @@ const MusicRoom = () => {
     document.body.removeChild(link);
   };
 
-  const handleGenerate = async () => {
-    setError('');
-    setGeneratedUrl('');
-    if (!audioFile || !description) {
-      setError('Please upload an audio file and enter a description');
-      return;
-    }
-    setLoading(true);
+  const handleGenerate = async (e) => {
+    e.preventDefault();
+    setIsGenerating(true);
+    setError(null);
+
     try {
       const formData = new FormData();
       formData.append('audio', audioFile);
-      formData.append('description', description);
+      formData.append('prompt', description);
+      formData.append('duration', 30);
+      formData.append('output_format', 'mp3');
+      formData.append('steps', 50);
+      formData.append('cfg_scale', 7);
+      formData.append('strength', 0.75);
 
-      const res = await fetch('http://localhost:5001/api/music/generate', {
-        method: 'POST',
-        body: formData,
-      });
-      if (!res.ok) {
-        throw new Error('Failed to generate music');
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/music/generate`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'x-auth-token': localStorage.getItem('token')
+          }
+        }
+      );
+
+      if (response.data.audioUrl) {
+        setGeneratedUrl(response.data.audioUrl);
+        toast.success('音乐生成成功！');
       }
-      const data = await res.json();
-      setGeneratedUrl(`http://localhost:5001${data.generatedAudioUrl}`);
     } catch (err) {
-      setError(err.message || 'An error occurred while generating music');
+      console.error('Error generating music:', err);
+      setError(err.response?.data?.message || '生成音乐失败，请重试');
+      toast.error('生成音乐失败，请重试');
+    } finally {
+      setIsGenerating(false);
     }
-    setLoading(false);
   };
 
   return (
-    <Container maxWidth="lg">
+    <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Box sx={{ mt: 4 }}>
         <Typography variant="h4" gutterBottom>
           Music Room: {roomId}
@@ -247,16 +258,33 @@ const MusicRoom = () => {
           <Button
             variant="contained"
             onClick={handleGenerate}
-            disabled={!audioFile || !description || loading}
+            disabled={!audioFile || !description || isGenerating}
             sx={{ mt: 2 }}
           >
-            {loading ? <CircularProgress size={24} /> : 'Generate Music'}
+            {isGenerating ? (
+              <CircularProgress size={24} />
+            ) : (
+              'Generate Music'
+            )}
           </Button>
         </Box>
         {generatedUrl && (
-          <Box mt={4}>
-            <Typography variant="subtitle1">生成的音乐：</Typography>
-            <audio controls src={generatedUrl} style={{ width: '100%' }} />
+          <Box sx={{ mt: 4 }}>
+            <Typography variant="h6" gutterBottom>
+              生成的音乐
+            </Typography>
+            <audio controls style={{ width: '100%' }}>
+              <source src={generatedUrl} type="audio/mpeg" />
+              Your browser does not support the audio element.
+            </audio>
+          </Box>
+        )}
+        {isGenerating && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <CircularProgress />
+            <Typography sx={{ ml: 2 }}>
+              正在生成音乐，这可能需要一些时间...
+            </Typography>
           </Box>
         )}
       </Box>
