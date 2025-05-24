@@ -12,7 +12,9 @@ const server = http.createServer(app);
 // Configure Socket.io with CORS
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: process.env.NODE_ENV === 'production' 
+      ? [process.env.FRONTEND_URL || 'https://echolab.vercel.app']
+      : "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true
   }
@@ -21,7 +23,9 @@ const io = socketIo(server, {
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: process.env.NODE_ENV === 'production'
+    ? [process.env.FRONTEND_URL || 'https://echolab.vercel.app']
+    : 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'x-auth-token']
