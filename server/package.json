@@ -2,10 +2,10 @@
   "name": "echolab-server",
   "version": "1.0.0",
   "description": "Echolab backend server",
-  "main": "./index.js",
+  "main": "index.js",
   "scripts": {
-    "start": "node ./index.js",
-    "dev": "nodemon ./index.js"
+    "start": "cd /opt/render/project/src/server && node index.js",
+    "dev": "nodemon index.js"
   },
   "dependencies": {
     "aws-sdk": "^2.1450.0",
