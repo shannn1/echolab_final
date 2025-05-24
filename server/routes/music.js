@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Create new music
 router.post('/', auth, upload.single('audio'), async (req, res) => {
@@ -127,7 +127,10 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
 
     const formData = new FormData();
     formData.append('prompt', prompt);
-    formData.append('audio', fs.createReadStream(audioFile.path));
+    formData.append('audio', audioFile.buffer, {
+      filename: audioFile.originalname,
+      contentType: audioFile.mimetype
+    });
     formData.append('duration', duration);
     formData.append('output_format', output_format);
     formData.append('seed', seed);
