@@ -116,6 +116,7 @@ router.delete('/:id', auth, async (req, res) => {
 
 // 修改生成音乐的路由
 router.post('/generate', upload.single('audio'), async (req, res) => {
+  console.log('收到 /api/music/generate 请求');
   try {
     const { prompt, duration = 30, output_format = 'mp3', seed, steps = 50, cfg_scale = 7, strength = 0.75 } = req.body;
     const audioFile = req.file;
@@ -166,6 +167,11 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
       error: error.message 
     });
   }
+});
+
+router.use((err, req, res, next) => {
+  console.error('Router-level error:', err);
+  res.status(500).json({ message: 'Internal server error', error: err.message });
 });
 
 module.exports = router; 
