@@ -5,7 +5,7 @@ const Music = require('../models/Music');
 const auth = require('../middleware/auth');
 const fs = require('fs');
 const path = require('path');
-const { uploadToS3 } = require('../index');
+const { uploadToS3 } = require('../utils/s3');
 
 // 确保 uploads 目录存在
 const uploadsDir = path.join(__dirname, '..', 'uploads');

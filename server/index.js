@@ -4,15 +4,7 @@ const mongoose = require('mongoose');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const AWS = require('aws-sdk');
 require('dotenv').config();
-
-// Configure AWS
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION
-});
 
 const app = express();
 const server = http.createServer(app);
@@ -29,15 +21,8 @@ const io = socketIo(server, {
 });
 
 // Middleware
+app.use(cors());
 app.use(express.json());
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? [process.env.FRONTEND_URL || 'https://echolab2-0.vercel.app']
-    : 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'x-auth-token']
-}));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -48,10 +33,7 @@ app.use((req, res, next) => {
 // Database connection with retry logic
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/echolab', {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/echolab');
     console.log('Connected to MongoDB');
   } catch (err) {
     console.error('MongoDB connection error:', err);
@@ -91,8 +73,8 @@ io.on('connection', (socket) => {
 });
 
 // Routes
-// app.use('/generated', express.static(path.join(__dirname, 'public', 'generated')));
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/users', require('./routes/users'));
 app.use('/api/music', require('./routes/music'));
 app.use('/api/rooms', require('./routes/rooms'));
 
@@ -128,25 +110,6 @@ process.on('uncaughtException', (err) => {
   console.error('Uncaught Exception:', err);
   process.exit(1);
 });
-
-// 修改音频文件存储逻辑
-const uploadToS3 = async (fileBuffer, fileName) => {
-  const params = {
-    Bucket: process.env.AWS_S3_BUCKET,
-    Key: `generated/${fileName}`,
-    Body: fileBuffer,
-    ContentType: 'audio/mpeg',
-    ACL: 'public-read'
-  };
-
-  try {
-    const data = await s3.upload(params).promise();
-    return data.Location; // 返回文件的公开访问 URL
-  } catch (error) {
-    console.error('S3 upload error:', error);
-    throw error;
-  }
-};
 
 const PORT = process.env.PORT || 5001;
 
