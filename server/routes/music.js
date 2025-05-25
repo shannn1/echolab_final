@@ -199,30 +199,10 @@ router.post('/generate', auth, memoryUpload.single('audio'), async (req, res) =>
     // 上传到 S3
     const s3Url = await uploadToS3(Buffer.from(audioBuffer), fileName);
 
-    // 创建新的音乐记录
-    const newMusic = new Music({
-      title: prompt, // 使用提示文本作为标题
-      description: `Generated music with prompt: ${prompt}`,
-      audioUrl: s3Url,
-      creator: req.user.id,
-      isPublic: false, // 默认设为私有
-      generationParams: {
-        prompt,
-        duration,
-        output_format,
-        steps,
-        cfg_scale,
-        strength,
-        seed: response.headers.get('seed')
-      }
-    });
-
-    await newMusic.save();
-
+    // 只返回音频URL，不保存到数据库
     res.json({ 
-      message: 'Music generated and saved successfully',
-      audioUrl: s3Url,
-      music: newMusic
+      message: 'Music generated successfully',
+      audioUrl: s3Url
     });
 
   } catch (error) {
