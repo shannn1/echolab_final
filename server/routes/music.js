@@ -6,16 +6,12 @@ const auth = require('../middleware/auth');
 const fs = require('fs');
 const path = require('path');
 const { uploadToS3 } = require('../index');
-const { FormData, File, fetch } = require('undici');
 
-// 确保必要的目录存在
-const tempDir = path.join(__dirname, '..', 'temp');
+// 确保 uploads 目录存在
 const uploadsDir = path.join(__dirname, '..', 'uploads');
-[tempDir, uploadsDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-});
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Configure multer for audio file upload
 const storage = multer.diskStorage({
@@ -137,7 +133,7 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
       return res.status(400).json({ message: 'No audio file uploaded' });
     }
 
-    // 使用 Web API FormData
+    // 使用原生 Web API FormData
     const formData = new FormData();
     formData.append('prompt', prompt);
     
@@ -147,12 +143,13 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
     });
     formData.append('audio', file);
     
-    formData.append('duration', duration);
+    // 确保所有非文件字段都是字符串
+    formData.append('duration', String(duration));
     formData.append('output_format', output_format);
-    formData.append('seed', seed);
-    formData.append('steps', steps);
-    formData.append('cfg_scale', cfg_scale);
-    formData.append('strength', strength);
+    formData.append('seed', String(seed));
+    formData.append('steps', String(steps));
+    formData.append('cfg_scale', String(cfg_scale));
+    formData.append('strength', String(strength));
 
     console.log('Sending request to Stability AI API...');
     const response = await fetch('https://api.stability.ai/v2beta/audio-to-audio', {
