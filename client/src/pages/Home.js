@@ -10,7 +10,7 @@ import {
   CardActions,
   Box,
 } from '@mui/material';
-import { MusicNote, Group, CloudDownload } from '@mui/icons-material';
+import { MusicNote, Group, CloudDownload, Public } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
 const Home = () => {
@@ -53,9 +53,9 @@ const Home = () => {
       description: 'Join music rooms and collaborate with other artists in real-time',
     },
     {
-      icon: <CloudDownload sx={{ fontSize: 40 }} />,
-      title: 'Save & Share',
-      description: 'Download your creations, save them to your library, and share with the community',
+      icon: <Public sx={{ fontSize: 40 }} />,
+      title: 'Music Plaza',
+      description: 'Explore and favorite music shared by users on the platform',
     },
   ];
 
@@ -295,9 +295,9 @@ const Home = () => {
               <CardActions sx={{ justifyContent: 'center', pb: 2 }}>
                 <Button
                   variant="outlined"
-                  onClick={() => navigate(user ? '/room/new' : '/login')}
+                  onClick={() => navigate('/plaza')}
                 >
-                  Try it now
+                  Explore Plaza
                 </Button>
               </CardActions>
             </Card>

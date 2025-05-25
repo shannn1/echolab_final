@@ -42,6 +42,9 @@ const Navbar = () => {
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           {user ? (
             <>
+              <Button color="inherit" component={RouterLink} to="/plaza">
+                Plaza
+              </Button>
               <Button color="inherit" component={RouterLink} to="/library">
                 My Library
               </Button>
@@ -59,7 +62,7 @@ const Navbar = () => {
                 id="menu-appbar"
                 anchorEl={anchorEl}
                 anchorOrigin={{
-                  vertical: 'top',
+                  vertical: 'bottom',
                   horizontal: 'right',
                 }}
                 keepMounted

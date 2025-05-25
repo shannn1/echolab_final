@@ -30,6 +30,11 @@ import {
   Facebook,
   Email,
   WhatsApp,
+  ToggleOn,
+  ToggleOff,
+  Public,
+  Favorite,
+  FavoriteBorder,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -58,11 +63,20 @@ const Library = () => {
   const [shareUrl, setShareUrl] = useState('');
   const [shareMusic, setShareMusic] = useState(null);
 
+  // 收藏相关
+  const [favoriteMusic, setFavoriteMusic] = useState([]);
+  const [favorites, setFavorites] = useState(user?.favorites || []);
+  const favoriteAudioRefs = useRef({});
+
   useEffect(() => {
     fetchMusic();
+    fetchFavorites();
     // 卸载时暂停所有音频
     return () => {
       Object.values(audioRefs.current).forEach(audio => {
+        if (audio) audio.pause();
+      });
+      Object.values(favoriteAudioRefs.current).forEach(audio => {
         if (audio) audio.pause();
       });
     };
@@ -74,6 +88,22 @@ const Library = () => {
       setMusic(response.data);
     } catch (err) {
       console.error('Error fetching music:', err);
+    }
+  };
+
+  const fetchFavorites = async () => {
+    try {
+      const res = await axios.get('/api/music/plaza');
+      // 只保留用户收藏的
+      if (user?.favorites?.length) {
+        setFavoriteMusic(res.data.filter(m => user.favorites.includes(m._id)));
+        setFavorites(user.favorites);
+      } else {
+        setFavoriteMusic([]);
+        setFavorites([]);
+      }
+    } catch (err) {
+      setFavoriteMusic([]);
     }
   };
 
@@ -147,6 +177,36 @@ const Library = () => {
     } catch (err) {
       console.error('Error updating music:', err);
     }
+  };
+
+  // 收藏区播放/暂停
+  const handleFavoritePlayPause = (musicId) => {
+    const currentAudio = favoriteAudioRefs.current[musicId];
+    if (!currentAudio) return;
+    if (playingId === musicId) {
+      currentAudio.pause();
+      setPlayingId(null);
+    } else {
+      Object.entries(favoriteAudioRefs.current).forEach(([id, audio]) => {
+        if (audio && id !== musicId) audio.pause();
+      });
+      currentAudio.play();
+      setPlayingId(musicId);
+    }
+  };
+
+  // 收藏/取消收藏
+  const handleFavorite = async (musicId, isFav) => {
+    await axios.patch('/api/auth/favorite', { musicId, action: isFav ? 'remove' : 'add' });
+    let newFavs;
+    if (isFav) {
+      newFavs = favorites.filter(id => id !== musicId);
+    } else {
+      newFavs = [...favorites, musicId];
+    }
+    setFavorites(newFavs);
+    setFavoriteMusic(favoriteMusic.filter(m => newFavs.includes(m._id)));
+    // 重新拉取user信息更严谨（可选）
   };
 
   return (
@@ -277,6 +337,17 @@ const Library = () => {
                         >
                           <Delete fontSize="small" />
                         </IconButton>
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          sx={{ mx: 0.5 }}
+                          onClick={() => handleFavorite(item._id, favorites.includes(item._id))}
+                          title={favorites.includes(item._id) ? 'Remove from Favorites' : 'Add to Favorites'}
+                        >
+                          {favorites.includes(item._id)
+                            ? <Favorite color="error" />
+                            : <FavoriteBorder />}
+                        </IconButton>
                       </Box>
                     </ListItem>
                   ))}
@@ -322,6 +393,28 @@ const Library = () => {
           <DialogTitle>Share</DialogTitle>
           <DialogContent>
             <List>
+              {/* Plaza 分享开关 */}
+              {shareMusic && (
+                <ListItem>
+                  <ListItemIcon>
+                    <Public color={shareMusic.sharedToPlaza ? 'primary' : 'disabled'} />
+                  </ListItemIcon>
+                  <ListItemText primary="Plaza" />
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    onClick={async () => {
+                      const newVal = !shareMusic.sharedToPlaza;
+                      await axios.patch(`/api/music/${shareMusic._id}/share`, { sharedToPlaza: newVal });
+                      setMusic(music.map(m => m._id === shareMusic._id ? { ...m, sharedToPlaza: newVal } : m));
+                      setShareMusic({ ...shareMusic, sharedToPlaza: newVal });
+                    }}
+                    title={shareMusic.sharedToPlaza ? 'Unshare from Plaza' : 'Share to Plaza'}
+                  >
+                    {shareMusic.sharedToPlaza ? <ToggleOn color="primary" /> : <ToggleOff />}
+                  </IconButton>
+                </ListItem>
+              )}
               <ListItem button onClick={() => {navigator.clipboard.writeText(shareUrl); handleCloseShare();}}>
                 <ListItemIcon>
                   <ContentCopy />
@@ -355,6 +448,43 @@ const Library = () => {
             </List>
           </DialogContent>
         </Dialog>
+
+        {/* 我的收藏区域 */}
+        {favoriteMusic.length > 0 && (
+          <Box sx={{ mt: 4, mb: 4 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>My Favorites</Typography>
+            <Paper sx={{ p: 2, mb: 2, maxWidth: 1200, mx: 'auto', bgcolor: '#232323' }}>
+              <List>
+                {favoriteMusic.map(item => (
+                  <ListItem key={item._id} sx={{ alignItems: 'flex-start', display: 'flex', justifyContent: 'space-between', borderRadius: 2, mb: 1 }}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <ListItemText
+                        primary={<Box sx={{ fontWeight: 600, fontSize: 17, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.title}</Box>}
+                        secondary={<Box sx={{ color: 'text.secondary', fontSize: 15 }}>{item.description}</Box>}
+                      />
+                      <Typography variant="caption" color="text.secondary">By: {item.creator?.username || 'Unknown'}</Typography>
+                    </Box>
+                    <audio
+                      ref={el => (favoriteAudioRefs.current[item._id] = el)}
+                      src={item.audioUrl}
+                      onEnded={() => setPlayingId(null)}
+                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+                      <IconButton edge="end" size="small" sx={{ mx: 0.5 }} onClick={() => handleFavoritePlayPause(item._id)}>
+                        {playingId === item._id ? <Pause fontSize="small" /> : <PlayArrow fontSize="small" />}
+                      </IconButton>
+                      <IconButton edge="end" size="small" sx={{ mx: 0.5 }} onClick={() => handleFavorite(item._id, favorites.includes(item._id))} title={favorites.includes(item._id) ? 'Remove from Favorites' : 'Add to Favorites'}>
+                        {favorites.includes(item._id)
+                          ? <Favorite color="error" />
+                          : <FavoriteBorder />}
+                      </IconButton>
+                    </Box>
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          </Box>
+        )}
       </Box>
     </Container>
   );

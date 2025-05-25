@@ -30,11 +30,17 @@ const memoryUpload = multer({ storage: multer.memoryStorage() });
 // Create new music - 使用磁盘存储
 router.post('/', auth, diskUpload.single('audio'), async (req, res) => {
   try {
-    const { title, description, roomId, isPublic } = req.body;
+    const { title, description, roomId, isPublic, audioUrl } = req.body;
+    
+    // 检查是否有文件上传或audioUrl
+    if (!req.file && !audioUrl) {
+      return res.status(400).json({ message: 'No audio file or URL provided' });
+    }
+
     const newMusic = new Music({
       title,
       description,
-      audioUrl: req.file.path,
+      audioUrl: req.file ? req.file.path : audioUrl,
       creator: req.user.id,
       roomId,
       isPublic
@@ -112,7 +118,17 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(401).json({ message: 'Not authorized' });
     }
 
-    await music.remove();
+    // 如果是本地文件，删除文件
+    if (music.audioUrl && !music.audioUrl.startsWith('http')) {
+      const filePath = path.join(__dirname, '..', music.audioUrl);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    // 使用 findByIdAndDelete 替代 remove
+    await Music.findByIdAndDelete(req.params.id);
+
     res.json({ message: 'Music removed' });
   } catch (err) {
     console.error(err.message);
@@ -215,6 +231,35 @@ router.post('/generate', auth, memoryUpload.single('audio'), async (req, res) =>
       message: 'Error generating music',
       error: error.message 
     });
+  }
+});
+
+// PATCH /:id/share - 设置或取消分享至Plaza
+router.patch('/:id/share', auth, async (req, res) => {
+  try {
+    const { sharedToPlaza } = req.body;
+    const music = await Music.findById(req.params.id);
+    if (!music) return res.status(404).json({ message: 'Music not found' });
+    if (music.creator.toString() !== req.user.id) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+    music.sharedToPlaza = !!sharedToPlaza;
+    await music.save();
+    res.json(music);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
+// GET /plaza - 获取所有已分享至Plaza的音乐
+router.get('/plaza', async (req, res) => {
+  try {
+    const music = await Music.find({ sharedToPlaza: true }).populate('creator', 'username email');
+    res.json(music);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
   }
 });
 
