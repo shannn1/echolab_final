@@ -148,11 +148,7 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
     formData.append('audio', fileStream, {
       filename: audioFile.originalname,
       contentType: audioFile.mimetype,
-      knownLength: audioFile.size,
-      header: {
-        'Content-Type': audioFile.mimetype,
-        'Content-Disposition': `form-data; name="audio"; filename="${audioFile.originalname}"`
-      }
+      knownLength: audioFile.size
     });
     
     formData.append('duration', duration);
