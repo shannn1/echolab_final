@@ -14,6 +14,7 @@ import {
   IconButton,
   Alert,
   CircularProgress,
+  Tooltip,
 } from '@mui/material';
 import {
   PlayArrow,
@@ -22,6 +23,7 @@ import {
   Save,
   Share,
   Delete,
+  Edit,
 } from '@mui/icons-material';
 import { io } from 'socket.io-client';
 import { useAuth } from '../context/AuthContext';
@@ -35,7 +37,7 @@ const MusicRoom = () => {
   const [socket, setSocket] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
   const [description, setDescription] = useState('');
-  const [generatedUrl, setGeneratedUrl] = useState('');
+  const [generatedList, setGeneratedList] = useState([]); // [{url, description, isSaved}]
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [collaborators, setCollaborators] = useState([]);
@@ -45,6 +47,9 @@ const MusicRoom = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showGenerated, setShowGenerated] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [refineDescription, setRefineDescription] = useState('');
+  const [refineLoading, setRefineLoading] = useState(false);
+  const [refineError, setRefineError] = useState('');
 
   // 音乐素材库数据
   const musicResources = [
@@ -73,6 +78,11 @@ const MusicRoom = () => {
 
     return () => {
       newSocket.disconnect();
+      // 清理未保存的音乐和上传的音乐
+      generatedList.forEach(item => {
+        if (item.url) URL.revokeObjectURL(item.url);
+      });
+      if (audioFile) setAudioFile(null);
     };
   }, [roomId]);
 
@@ -102,7 +112,10 @@ const MusicRoom = () => {
     const formData = new FormData();
     formData.append('audio', audioFile);
     formData.append('description', description);
-    formData.append('roomId', roomId);
+    formData.append('title', description || (audioFile && audioFile.name) || 'Untitled');
+    if (roomId && roomId !== 'new') {
+      formData.append('roomId', roomId);
+    }
 
     try {
       const response = await axios.post('/api/music', formData, {
@@ -134,11 +147,11 @@ const MusicRoom = () => {
     document.body.removeChild(link);
   };
 
+  // 初次生成音乐
   const handleGenerate = async (e) => {
     e.preventDefault();
     setIsGenerating(true);
     setError(null);
-
     try {
       const formData = new FormData();
       formData.append('audio', audioFile);
@@ -148,7 +161,6 @@ const MusicRoom = () => {
       formData.append('steps', 50);
       formData.append('cfg_scale', 7);
       formData.append('strength', 0.75);
-
       const response = await axios.post(
         '/api/music/generate',
         formData,
@@ -160,32 +172,69 @@ const MusicRoom = () => {
           timeout: 120000
         }
       );
-
       if (response.data.audioUrl) {
-        setGeneratedUrl(response.data.audioUrl);
-        setShowGenerated(true);
-        toast.success('Music generated successfully!');
+        setGeneratedList([{ url: response.data.audioUrl, description, isSaved: false }]);
+        setRefineDescription('');
       }
     } catch (err) {
-      console.error('Error generating music:', err);
       setError(err.response?.data?.message || 'Music generation failed. Please try again.');
-      toast.error('Music generation failed. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // 保存生成音乐到library
+  // refine
+  const handleRefine = async () => {
+    setRefineLoading(true);
+    setRefineError('');
+    try {
+      const prev = generatedList[generatedList.length - 1];
+      const formData = new FormData();
+      const responseAudio = await fetch(prev.url);
+      const audioBlob = await responseAudio.blob();
+      formData.append('audio', audioBlob, 'prev.mp3');
+      formData.append('prompt', refineDescription);
+      formData.append('duration', 30);
+      formData.append('output_format', 'mp3');
+      formData.append('steps', 50);
+      formData.append('cfg_scale', 7);
+      formData.append('strength', 0.75);
+      const response = await axios.post(
+        '/api/music/generate',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'x-auth-token': localStorage.getItem('token')
+          },
+          timeout: 120000
+        }
+      );
+      if (response.data.audioUrl) {
+        setGeneratedList([
+          ...generatedList,
+          { url: response.data.audioUrl, description: refineDescription, isSaved: false }
+        ]);
+        setRefineDescription('');
+      }
+    } catch (err) {
+      setRefineError('Music generation failed. Please try again.');
+    } finally {
+      setRefineLoading(false);
+    }
+  };
+
+  // 保存最新一轮生成音乐到library
   const handleSaveGenerated = async () => {
-    if (!generatedUrl) return;
+    const last = generatedList[generatedList.length - 1];
     setSaving(true);
     try {
-      const response = await axios.post(
+      await axios.post(
         '/api/music',
         {
-          title: description || 'Generated Music',
-          description: `Generated music with prompt: ${description}`,
-          audioUrl: generatedUrl,
+          title: last.description || 'Generated Music',
+          description: `Generated music with prompt: ${last.description}`,
+          audioUrl: last.url,
           isPublic: false
         },
         {
@@ -196,8 +245,9 @@ const MusicRoom = () => {
         }
       );
       toast.success('Music saved to your library!');
-      setShowGenerated(false);
-      setGeneratedUrl('');
+      setGeneratedList(generatedList.map((item, idx) =>
+        idx === generatedList.length - 1 ? { ...item, isSaved: true } : item
+      ));
     } catch (err) {
       toast.error('Failed to save music to library.');
     } finally {
@@ -205,42 +255,17 @@ const MusicRoom = () => {
     }
   };
 
-  // 放弃生成音乐
-  const handleDiscardGenerated = () => {
-    setShowGenerated(false);
-    setGeneratedUrl('');
+  // 丢弃最新一轮生成音乐
+  const handleDiscard = () => {
+    setGeneratedList(generatedList.slice(0, -1));
+    setRefineDescription('');
+    setRefineError('');
   };
 
-  const handleShareToPlaza = async () => {
-    if (!generatedUrl) return;
-    setSaving(true);
-    try {
-      // 先保存音乐到library
-      const response = await axios.post(
-        '/api/music',
-        {
-          title: description || 'Generated Music',
-          description: `Generated music with prompt: ${description}`,
-          audioUrl: generatedUrl,
-          isPublic: false
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-auth-token': localStorage.getItem('token')
-          }
-        }
-      );
-      // 分享到plaza
-      await axios.patch(`/api/music/${response.data._id}/share`, { sharedToPlaza: true });
-      toast.success('Shared to Plaza!');
-      setShowGenerated(false);
-      setGeneratedUrl('');
-    } catch (err) {
-      toast.error('Failed to share to Plaza.');
-    } finally {
-      setSaving(false);
-    }
+  // 点击Refine Music时清空输入框
+  const handleRefineMusicClick = () => {
+    setRefineDescription('');
+    setRefineError('');
   };
 
   return (
@@ -321,42 +346,6 @@ const MusicRoom = () => {
                 )}
               </Button>
             </Box>
-            {showGenerated && generatedUrl && (
-              <Box sx={{ mt: 4 }}>
-                <Typography variant="h6" gutterBottom>
-                  Music Generated
-                </Typography>
-                <audio controls style={{ width: '100%' }}>
-                  <source src={generatedUrl} type="audio/mpeg" />
-                  Your browser does not support the audio element.
-                </audio>
-                <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleSaveGenerated}
-                    disabled={saving}
-                  >
-                    {saving ? 'Saving...' : 'Save to Library'}
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleShareToPlaza}
-                    disabled={saving}
-                  >
-                    Share to Plaza
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={handleDiscardGenerated}
-                  >
-                    Discard
-                  </Button>
-                </Box>
-              </Box>
-            )}
             {isGenerating && (
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
                 <CircularProgress />
@@ -366,6 +355,83 @@ const MusicRoom = () => {
               </Box>
             )}
           </Paper>
+
+          {/* 多轮生成音乐展示区 */}
+          {generatedList.map((item, idx) => (
+            <Box key={idx} sx={{ mt: 4, mb: 4, p: 3, bgcolor: '#232323', borderRadius: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Music Generated {idx + 1}
+              </Typography>
+              <audio controls style={{ width: '100%' }}>
+                <source src={item.url} type="audio/mpeg" />
+                Your browser does not support the audio element.
+              </audio>
+              <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+                Prompt: {item.description}
+              </Typography>
+              {/* 只在最后一项下方显示操作区 */}
+              {idx === generatedList.length - 1 && (
+                <Box sx={{ mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleSaveGenerated}
+                    disabled={item.isSaved || saving}
+                    startIcon={<Save />}
+                  >
+                    {saving ? 'Saving...' : item.isSaved ? 'Saved' : 'Save to Library'}
+                  </Button>
+                  <Tooltip title={item.isSaved ? '' : 'Please save to library first'}>
+                    <span>
+                      <Button
+                        variant="outlined"
+                        color="secondary"
+                        startIcon={<Edit />}
+                        disabled={!item.isSaved || refineLoading}
+                        onClick={handleRefineMusicClick}
+                        sx={{ ml: 1 }}
+                      >
+                        Refine Music
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<Delete />}
+                    onClick={handleDiscard}
+                    sx={{ ml: 1 }}
+                  >
+                    Discard
+                  </Button>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="New Description"
+                    value={refineDescription}
+                    onChange={e => setRefineDescription(e.target.value)}
+                    sx={{ mt: 2 }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleRefine}
+                    disabled={refineLoading || !refineDescription}
+                    sx={{ mt: 1 }}
+                  >
+                    {refineLoading ? <CircularProgress size={22} /> : 'Generate Music'}
+                  </Button>
+                  {refineLoading && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                      <CircularProgress size={22} />
+                      <Typography sx={{ ml: 2 }}>Generating music, this may take a while...</Typography>
+                    </Box>
+                  )}
+                  {refineError && <Typography color="error">{refineError}</Typography>}
+                </Box>
+              )}
+            </Box>
+          ))}
         </Box>
         {/* 右侧Resource Library固定宽度 */}
         <Box sx={{ width: { xs: '100%', md: 320 }, minWidth: 240, maxWidth: 400 }}>
