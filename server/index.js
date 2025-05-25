@@ -74,7 +74,6 @@ io.on('connection', (socket) => {
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
 app.use('/api/music', require('./routes/music'));
 app.use('/api/rooms', require('./routes/rooms'));
 
