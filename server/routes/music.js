@@ -5,20 +5,22 @@ const Music = require('../models/Music');
 const auth = require('../middleware/auth');
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
-const FormData = require('form-data');
 const { uploadToS3 } = require('../index');
+const { FormData, File, fetch } = require('undici');
 
-// 确保 temp 目录存在
+// 确保必要的目录存在
 const tempDir = path.join(__dirname, '..', 'temp');
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir, { recursive: true });
-}
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+[tempDir, uploadsDir].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+});
 
 // Configure multer for audio file upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);
@@ -127,7 +129,6 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
   console.log('收到 /api/music/generate 请求');
   const audioFile = req.file;
   console.log('audioFile:', audioFile);
-  let tempFilePath = null;  // 声明在 try 块外面
 
   try {
     const { prompt, duration = 30, output_format = 'mp3', seed, steps = 50, cfg_scale = 7, strength = 0.75 } = req.body;
@@ -136,20 +137,15 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
       return res.status(400).json({ message: 'No audio file uploaded' });
     }
 
+    // 使用 Web API FormData
     const formData = new FormData();
     formData.append('prompt', prompt);
     
-    // 创建临时文件
-    tempFilePath = path.join(tempDir, `${Date.now()}-${audioFile.originalname}`);
-    fs.writeFileSync(tempFilePath, audioFile.buffer);
-    
-    // 使用文件流，并确保提供完整的文件信息
-    const fileStream = fs.createReadStream(tempFilePath);
-    formData.append('audio', fileStream, {
-      filename: audioFile.originalname,
-      contentType: audioFile.mimetype,
-      knownLength: audioFile.size
+    // 创建 File 对象
+    const file = new File([audioFile.buffer], audioFile.originalname, {
+      type: audioFile.mimetype
     });
+    formData.append('audio', file);
     
     formData.append('duration', duration);
     formData.append('output_format', output_format);
@@ -158,30 +154,28 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
     formData.append('cfg_scale', cfg_scale);
     formData.append('strength', strength);
 
-    console.log('Temp file path:', tempFilePath);
-    console.log('File exists:', fs.existsSync(tempFilePath));
-    console.log('File size:', fs.statSync(tempFilePath).size);
-    console.log('File stream created:', !!fileStream);
-
-    const response = await axios.post('https://api.stability.ai/v2beta/audio-to-audio', formData, {
+    console.log('Sending request to Stability AI API...');
+    const response = await fetch('https://api.stability.ai/v2beta/audio-to-audio', {
+      method: 'POST',
       headers: {
-        ...formData.getHeaders(),
         'Authorization': `Bearer ${process.env.STABILITY_API_KEY}`,
         'Accept': 'audio/*'
       },
-      responseType: 'arraybuffer'
+      body: formData
     });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    const buffer = await response.arrayBuffer();
+    console.log('Received response from Stability AI API');
 
     // 生成唯一文件名
     const fileName = `generated_${Date.now()}.${output_format}`;
     
     // 上传到 S3
-    const s3Url = await uploadToS3(response.data, fileName);
-
-    // 清理临时文件
-    if (tempFilePath && fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
-    }
+    const s3Url = await uploadToS3(Buffer.from(buffer), fileName);
 
     res.json({ 
       message: 'Music generated successfully',
@@ -190,10 +184,6 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
 
   } catch (error) {
     console.error('Error generating music:', error);
-    // 确保在错误时也清理临时文件
-    if (tempFilePath && fs.existsSync(tempFilePath)) {
-      fs.unlinkSync(tempFilePath);
-    }
     res.status(500).json({ 
       message: 'Error generating music',
       error: error.message 
@@ -205,7 +195,5 @@ router.use((err, req, res, next) => {
   console.error('Router-level error:', err);
   res.status(500).json({ message: 'Internal server error', error: err.message });
 });
-
-axios.defaults.timeout = 120000;
 
 module.exports = router; 
