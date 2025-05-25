@@ -139,18 +139,19 @@ const MusicRoom = () => {
           headers: {
             'Content-Type': 'multipart/form-data',
             'x-auth-token': localStorage.getItem('token')
-          }
+          },
+          timeout: 120000
         }
       );
 
       if (response.data.audioUrl) {
         setGeneratedUrl(response.data.audioUrl);
-        toast.success('音乐生成成功！');
+        toast.success('Music generated successfully!');
       }
     } catch (err) {
       console.error('Error generating music:', err);
-      setError(err.response?.data?.message || '生成音乐失败，请重试');
-      toast.error('生成音乐失败，请重试');
+      setError(err.response?.data?.message || 'Music generation failed. Please try again.');
+      toast.error('Music generation failed. Please try again.');
     } finally {
       setIsGenerating(false);
     }
@@ -271,7 +272,7 @@ const MusicRoom = () => {
         {generatedUrl && (
           <Box sx={{ mt: 4 }}>
             <Typography variant="h6" gutterBottom>
-              生成的音乐
+              Music Generated
             </Typography>
             <audio controls style={{ width: '100%' }}>
               <source src={generatedUrl} type="audio/mpeg" />
@@ -283,7 +284,7 @@ const MusicRoom = () => {
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
             <CircularProgress />
             <Typography sx={{ ml: 2 }}>
-              正在生成音乐，这可能需要一些时间...
+            Generating music, this may take a while...
             </Typography>
           </Box>
         )}
