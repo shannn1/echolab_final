@@ -9,6 +9,12 @@ const axios = require('axios');
 const FormData = require('form-data');
 const { uploadToS3 } = require('../index');
 
+// 确保 temp 目录存在
+const tempDir = path.join(__dirname, '..', 'temp');
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true });
+}
+
 // Configure multer for audio file upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -19,10 +25,12 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: multer.memoryStorage() });
+// 为不同的路由使用不同的 storage
+const diskUpload = multer({ storage: storage });
+const memoryUpload = multer({ storage: multer.memoryStorage() });
 
-// Create new music
-router.post('/', auth, upload.single('audio'), async (req, res) => {
+// Create new music - 使用磁盘存储
+router.post('/', auth, diskUpload.single('audio'), async (req, res) => {
   try {
     const { title, description, roomId, isPublic } = req.body;
     const newMusic = new Music({
@@ -114,8 +122,8 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// 修改生成音乐的路由
-router.post('/generate', upload.single('audio'), async (req, res) => {
+// 修改生成音乐的路由 - 使用内存存储
+router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
   console.log('收到 /api/music/generate 请求');
   const audioFile = req.file;
   console.log('audioFile:', audioFile);
@@ -130,14 +138,15 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
     formData.append('prompt', prompt);
     
     // 创建临时文件
-    const tempFilePath = path.join(__dirname, '..', 'temp', `${Date.now()}-${audioFile.originalname}`);
+    const tempFilePath = path.join(tempDir, `${Date.now()}-${audioFile.originalname}`);
     fs.writeFileSync(tempFilePath, audioFile.buffer);
     
-    // 使用文件流
+    // 使用文件流，并确保提供完整的文件信息
     const fileStream = fs.createReadStream(tempFilePath);
     formData.append('audio', fileStream, {
       filename: audioFile.originalname,
-      contentType: audioFile.mimetype
+      contentType: audioFile.mimetype,
+      knownLength: audioFile.size
     });
     
     formData.append('duration', duration);
@@ -146,6 +155,11 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
     formData.append('steps', steps);
     formData.append('cfg_scale', cfg_scale);
     formData.append('strength', strength);
+
+    console.log('Temp file path:', tempFilePath);
+    console.log('File exists:', fs.existsSync(tempFilePath));
+    console.log('File size:', fs.statSync(tempFilePath).size);
+    console.log('File stream created:', !!fileStream);
 
     const response = await axios.post('https://api.stability.ai/v2beta/audio-to-audio', formData, {
       headers: {
@@ -163,9 +177,7 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
     const s3Url = await uploadToS3(response.data, fileName);
 
     // 清理临时文件
-    //fs.unlink(audioFile.path, (err) => {
-    //  if (err) console.error('Error deleting temp file:', err);
-    //});
+    fs.unlinkSync(tempFilePath);
 
     res.json({ 
       message: 'Music generated successfully',
@@ -174,6 +186,10 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
 
   } catch (error) {
     console.error('Error generating music:', error);
+    // 确保在错误时也清理临时文件
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      fs.unlinkSync(tempFilePath);
+    }
     res.status(500).json({ 
       message: 'Error generating music',
       error: error.message 
