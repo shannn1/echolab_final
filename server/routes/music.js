@@ -128,10 +128,18 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
 
     const formData = new FormData();
     formData.append('prompt', prompt);
-    formData.append('audio', Buffer.from(audioFile.buffer), {
-      filename: audioFile.originalname || 'audio.mp3',
+    
+    // 创建临时文件
+    const tempFilePath = path.join(__dirname, '..', 'temp', `${Date.now()}-${audioFile.originalname}`);
+    fs.writeFileSync(tempFilePath, audioFile.buffer);
+    
+    // 使用文件流
+    const fileStream = fs.createReadStream(tempFilePath);
+    formData.append('audio', fileStream, {
+      filename: audioFile.originalname,
       contentType: audioFile.mimetype
     });
+    
     formData.append('duration', duration);
     formData.append('output_format', output_format);
     formData.append('seed', seed);
