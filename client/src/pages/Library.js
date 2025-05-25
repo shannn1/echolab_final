@@ -39,6 +39,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import XIcon from '@mui/icons-material/Close'; // 你可以换成 X 的图标
+import { useNavigate } from 'react-router-dom';
 
 const Library = () => {
   const { user } = useAuth();
@@ -67,6 +68,8 @@ const Library = () => {
   const [favoriteMusic, setFavoriteMusic] = useState([]);
   const [favorites, setFavorites] = useState(user?.favorites || []);
   const favoriteAudioRefs = useRef({});
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchMusic();
@@ -247,111 +250,140 @@ const Library = () => {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Paper sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
-                <List>
-                  {music.map((item) => (
-                    <ListItem key={item._id} sx={{ alignItems: 'flex-start', display: 'flex', justifyContent: 'space-between' }}>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <ListItemText
-                          primary={
-                            <Box
-                              sx={{
-                                maxWidth: 340,
-                                fontWeight: 600,
-                                fontSize: 17,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                              component="div"
-                            >
-                              {item.title && item.title.length > MAX_TITLE_LENGTH
-                                ? item.title.slice(0, MAX_TITLE_LENGTH) + '...'
-                                : item.title}
-                            </Box>
-                          }
-                          secondary={
-                            <Box
-                              sx={{
-                                maxWidth: 340,
-                                fontSize: 15,
-                                color: 'text.secondary',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'normal',
-                                pr: 1,
-                              }}
-                              component="div"
-                            >
-                              {item.description}
-                            </Box>
-                          }
+                {music.length === 0 ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <Typography variant="h6" color="text.secondary" gutterBottom>
+                      Your music library is empty
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                      Start creating your own music or explore the music plaza
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => navigate('/room/new')}
+                        startIcon={<PlayArrow />}
+                      >
+                        Generate Music
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={() => navigate('/plaza')}
+                        startIcon={<Public />}
+                      >
+                        Visit Plaza
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : (
+                  <List>
+                    {music.map((item) => (
+                      <ListItem key={item._id} sx={{ alignItems: 'flex-start', display: 'flex', justifyContent: 'space-between' }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <ListItemText
+                            primary={
+                              <Box
+                                sx={{
+                                  maxWidth: 340,
+                                  fontWeight: 600,
+                                  fontSize: 17,
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                }}
+                                component="div"
+                              >
+                                {item.title && item.title.length > MAX_TITLE_LENGTH
+                                  ? item.title.slice(0, MAX_TITLE_LENGTH) + '...'
+                                  : item.title}
+                              </Box>
+                            }
+                            secondary={
+                              <Box
+                                sx={{
+                                  maxWidth: 340,
+                                  fontSize: 15,
+                                  color: 'text.secondary',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'normal',
+                                  pr: 1,
+                                }}
+                                component="div"
+                              >
+                                {item.description}
+                              </Box>
+                            }
+                          />
+                        </Box>
+                        {/* 隐藏的audio标签 */}
+                        <audio
+                          ref={el => (audioRefs.current[item._id] = el)}
+                          src={item.audioUrl}
+                          onEnded={handleAudioEnded}
                         />
-                      </Box>
-                      {/* 隐藏的audio标签 */}
-                      <audio
-                        ref={el => (audioRefs.current[item._id] = el)}
-                        src={item.audioUrl}
-                        onEnded={handleAudioEnded}
-                      />
-                      <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          sx={{ mx: 0.5 }}
-                          onClick={() => handlePlayPause(item._id)}
-                        >
-                          {playingId === item._id ? <Pause fontSize="small" /> : <PlayArrow fontSize="small" />}
-                        </IconButton>
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          sx={{ mx: 0.5 }}
-                          onClick={() => handleDownload(item.audioUrl)}
-                        >
-                          <Download fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          sx={{ mx: 0.5 }}
-                          onClick={() => handleShare(item)}
-                        >
-                          <Share fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          sx={{ mx: 0.5 }}
-                          onClick={() => handleEdit(item)}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          sx={{ mx: 0.5 }}
-                          onClick={() => handleDelete(item._id)}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          sx={{ mx: 0.5 }}
-                          onClick={() => handleFavorite(item._id, favorites.includes(item._id))}
-                          title={favorites.includes(item._id) ? 'Remove from Favorites' : 'Add to Favorites'}
-                        >
-                          {favorites.includes(item._id)
-                            ? <Favorite color="error" />
-                            : <FavoriteBorder />}
-                        </IconButton>
-                      </Box>
-                    </ListItem>
-                  ))}
-                </List>
+                        <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            sx={{ mx: 0.5 }}
+                            onClick={() => handlePlayPause(item._id)}
+                          >
+                            {playingId === item._id ? <Pause fontSize="small" /> : <PlayArrow fontSize="small" />}
+                          </IconButton>
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            sx={{ mx: 0.5 }}
+                            onClick={() => handleDownload(item.audioUrl)}
+                          >
+                            <Download fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            sx={{ mx: 0.5 }}
+                            onClick={() => handleShare(item)}
+                          >
+                            <Share fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            sx={{ mx: 0.5 }}
+                            onClick={() => handleEdit(item)}
+                          >
+                            <Edit fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            sx={{ mx: 0.5 }}
+                            onClick={() => handleDelete(item._id)}
+                          >
+                            <Delete fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            sx={{ mx: 0.5 }}
+                            onClick={() => handleFavorite(item._id, favorites.includes(item._id))}
+                            title={favorites.includes(item._id) ? 'Remove from Favorites' : 'Add to Favorites'}
+                          >
+                            {favorites.includes(item._id)
+                              ? <Favorite color="error" />
+                              : <FavoriteBorder />}
+                          </IconButton>
+                        </Box>
+                      </ListItem>
+                    ))}
+                  </List>
+                )}
               </Paper>
             </Grid>
           </Grid>
