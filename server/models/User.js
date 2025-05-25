@@ -32,7 +32,12 @@ const UserSchema = new mongoose.Schema({
   musicIntro: {
     type: String,
     default: ''
-  }
+  },
+  favorites: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Music',
+    default: []
+  }]
 });
 
 module.exports = mongoose.model('User', UserSchema); 

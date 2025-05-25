@@ -32,6 +32,25 @@ router.patch('/me', auth, async (req, res) => {
   }
 });
 
+// PATCH /favorite - 收藏/取消收藏音乐
+router.patch('/favorite', auth, async (req, res) => {
+  try {
+    const { musicId, action } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!musicId) return res.status(400).json({ message: 'musicId required' });
+    if (action === 'add') {
+      if (!user.favorites.includes(musicId)) user.favorites.push(musicId);
+    } else if (action === 'remove') {
+      user.favorites = user.favorites.filter(id => id.toString() !== musicId);
+    }
+    await user.save();
+    res.json({ favorites: user.favorites });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
 // Register
 router.post('/register', async (req, res) => {
   try {

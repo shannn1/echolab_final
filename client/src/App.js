@@ -9,6 +9,7 @@ import Register from './pages/Register';
 import MusicRoom from './pages/MusicRoom';
 import Library from './pages/Library';
 import AccountPage from './pages/Account';
+import MusicPlaza from './pages/MusicPlaza';
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import { Box } from '@mui/material';
@@ -41,6 +42,7 @@ function App() {
               <Route path="/room/:roomId" element={<MusicRoom />} />
               <Route path="/library" element={<Library />} />
               <Route path="/account" element={<AccountPage />} />
+              <Route path="/plaza" element={<MusicPlaza />} />
             </Routes>
           </Box>
         </Router>

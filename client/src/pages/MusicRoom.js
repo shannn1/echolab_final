@@ -211,6 +211,38 @@ const MusicRoom = () => {
     setGeneratedUrl('');
   };
 
+  const handleShareToPlaza = async () => {
+    if (!generatedUrl) return;
+    setSaving(true);
+    try {
+      // 先保存音乐到library
+      const response = await axios.post(
+        '/api/music',
+        {
+          title: description || 'Generated Music',
+          description: `Generated music with prompt: ${description}`,
+          audioUrl: generatedUrl,
+          isPublic: false
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': localStorage.getItem('token')
+          }
+        }
+      );
+      // 分享到plaza
+      await axios.patch(`/api/music/${response.data._id}/share`, { sharedToPlaza: true });
+      toast.success('Shared to Plaza!');
+      setShowGenerated(false);
+      setGeneratedUrl('');
+    } catch (err) {
+      toast.error('Failed to share to Plaza.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
       <Box sx={{ mt: 4, display: 'flex', alignItems: 'flex-start' }}>
@@ -306,6 +338,14 @@ const MusicRoom = () => {
                     disabled={saving}
                   >
                     {saving ? 'Saving...' : 'Save to Library'}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={handleShareToPlaza}
+                    disabled={saving}
+                  >
+                    Share to Plaza
                   </Button>
                   <Button
                     variant="outlined"
