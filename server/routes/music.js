@@ -177,4 +177,6 @@ router.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error', error: err.message });
 });
 
+axios.defaults.timeout = 120000;
+
 module.exports = router; 
