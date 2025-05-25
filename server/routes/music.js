@@ -117,9 +117,10 @@ router.delete('/:id', auth, async (req, res) => {
 // 修改生成音乐的路由
 router.post('/generate', upload.single('audio'), async (req, res) => {
   console.log('收到 /api/music/generate 请求');
+  const audioFile = req.file;
+  console.log('audioFile:', audioFile);
   try {
     const { prompt, duration = 30, output_format = 'mp3', seed, steps = 50, cfg_scale = 7, strength = 0.75 } = req.body;
-    const audioFile = req.file;
 
     if (!audioFile) {
       return res.status(400).json({ message: 'No audio file uploaded' });
@@ -128,8 +129,8 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
     const formData = new FormData();
     formData.append('prompt', prompt);
     formData.append('audio', audioFile.buffer, {
-      filename: audioFile.originalname,
-      contentType: audioFile.mimetype
+      filename: audioFile.originalname || 'audio.mp3',
+      contentType: audioFile.mimetype || 'audio/mpeg'
     });
     formData.append('duration', duration);
     formData.append('output_format', output_format);
