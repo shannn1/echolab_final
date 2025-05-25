@@ -128,7 +128,10 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
 
     const formData = new FormData();
     formData.append('prompt', prompt);
-    formData.append('audio', audioFile.buffer, audioFile.originalname || 'audio.mp3');
+    formData.append('audio', audioFile.buffer, {
+      filename: audioFile.originalname || 'audio.mp3',
+      contentType: audioFile.mimetype
+    });
     formData.append('duration', duration);
     formData.append('output_format', output_format);
     formData.append('seed', seed);
@@ -152,9 +155,9 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
     const s3Url = await uploadToS3(response.data, fileName);
 
     // 清理临时文件
-    fs.unlink(audioFile.path, (err) => {
-      if (err) console.error('Error deleting temp file:', err);
-    });
+    //fs.unlink(audioFile.path, (err) => {
+    //  if (err) console.error('Error deleting temp file:', err);
+    //});
 
     res.json({ 
       message: 'Music generated successfully',
