@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MusicIntroForm from '../components/MusicIntroForm';
 import axios from 'axios';
+import MyModelPromptInput from '../components/MyModelPromptInput';
 
 const tabs = [
   { label: 'Account', value: 'account' },
@@ -128,9 +129,38 @@ const AccountPage = () => {
           )}
           {selectedTab === 'model' && (
             <>
-              <Typography variant="h5" gutterBottom>My Model</Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography variant="body1">Coming soon...</Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3 }}>
+                <Box
+                  sx={{
+                    width: 260,
+                    height: 260,
+                    background: '#222',
+                    border: '12px solid #222',
+                    borderRadius: 2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 2
+                  }}
+                >
+                  <img src="/stableAudio.png" alt="Stable Audio 2.0" style={{ width: '90%', borderRadius: 4, marginBottom: 12 }} />
+                  <Typography variant="h6" sx={{ color: '#222', fontWeight: 700, textAlign: 'center', mt: -6 }}>
+                    Stable Audio 2.0
+                  </Typography>
+                </Box>
+                <Typography variant="h5" sx={{ mt: 2, mb: 1, fontWeight: 700 }}>Stable Audio 2.0</Typography>
+                <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
+                  Stable Audio 2.0 builds upon Stable Audio 1.0, redefining AI music creation by offering high-quality tracks up to three minutes long with its innovative audio-to-audio generation. Users can now upload audio samples and, using natural language prompts, transform these samples into a wide array of sounds.
+                </Typography>
+                <Box sx={{ width: '100%', maxWidth: 400, mt: 2 }}>
+                  <Typography variant="subtitle1" sx={{ mb: 1 }}>Default Prompt</Typography>
+                  <MyModelPromptInput />
+                </Box>
+                <Typography variant="caption" sx={{ mt: 2, color: 'text.secondary' }}>
+                  Currently only Stable Audio 2.0 is supported.
+                </Typography>
+              </Box>
             </>
           )}
         </Paper>
