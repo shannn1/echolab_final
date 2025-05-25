@@ -20,16 +20,16 @@ const Home = () => {
   const [audioStarted, setAudioStarted] = useState(false);
 
   useEffect(() => {
-    // 自动播放音乐
+    // 首页打开时默认播放背景音乐
     if (audioRef.current) {
       audioRef.current.volume = 0.5;
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch((e) => {
           // 自动播放可能会被浏览器拦截
-          // 可以在需要时提示用户点击播放
         });
       }
+      setAudioStarted(true); // 默认已播放
     }
   }, []);
 
@@ -63,11 +63,7 @@ const Home = () => {
     <>
       <audio ref={audioRef} src="/sample_home_music.mp3" preload="auto" />
       <Box sx={{ position: 'fixed', right: 24, bottom: 24, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {!audioStarted ? (
-          <Button variant="contained" color="primary" onClick={handleStartAudio}>
-            ▶️ Play Background Music
-          </Button>
-        ) : (
+        {audioStarted ? (
           <Button variant="contained" color="secondary" onClick={() => {
             if (audioRef.current) {
               audioRef.current.pause();
@@ -76,6 +72,10 @@ const Home = () => {
             setAudioStarted(false);
           }}>
             ⏹️ Stop Background Music
+          </Button>
+        ) : (
+          <Button variant="contained" color="primary" onClick={handleStartAudio}>
+            ▶️ Play Background Music
           </Button>
         )}
       </Box>
@@ -87,62 +87,6 @@ const Home = () => {
           <Typography variant="h5" color="text.secondary" paragraph>
             Create, collaborate, and share experimental music with AI
           </Typography>
-          <Box
-            sx={{
-              mt: 4,
-              mb: 4,
-              p: { xs: 2, md: 4 },
-              borderRadius: 3,
-              color: '#fff',
-              position: 'relative',
-              height: { xs: 260, md: 320 },
-              overflow: 'hidden',
-              boxShadow: 3,
-            }}
-          >
-            {/* 背景图片 */}
-            <Box
-              sx={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                background: `url('/keyboard.png') center/cover no-repeat`,
-                opacity: 0.25,
-                zIndex: 1,
-              }}
-            />
-            {/* 文字内容可滚动 */}
-            <Box
-              sx={{
-                position: 'relative',
-                zIndex: 2,
-                height: '100%',
-                overflowY: 'auto',
-                pr: 2,
-              }}
-            >
-              <Typography variant="h5" gutterBottom>
-                What Is Experimental Music?
-              </Typography>
-              <Typography variant="body1" sx={{ fontSize: { xs: 16, md: 18 } }}>
-                Experimental music is an umbrella label for a diverse array of contemporary music, from classical and jazz to electronic music, that differs, often radically, from traditional forms of popular music in its composition, performance, and production. The music style, which dates back to the mid-twentieth century, uses various instruments and production methods, including using non-musical objects to create traditional instruments or sounds and manipulating the instruments or recording through physical or electroacoustic means. The compositional structure may even abandon traditional building blocks like rhythm, melody, timbre, or tempo in favor of free improvisation or total deconstruction.
-                <br /><br />
-                Though the terms "experimental" and "avant-garde" are sometimes used interchangeably, some music scholars and composers consider avant-garde music, which aims to innovate, as the furthest expression of an established musical form. Experimentalism is entirely separate from any musical form and focuses on discovery and playfulness without an underlying intention.
-              </Typography>
-              <Box sx={{ mt: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  href="https://www.masterclass.com/articles/experimental-music-guide"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Learn more on MasterClass
-                </Button>
-              </Box>
-            </Box>
-          </Box>
           {!user && (
             <Button
               variant="contained"
@@ -154,6 +98,139 @@ const Home = () => {
               Get Started
             </Button>
           )}
+        </Box>
+
+        <Box
+          sx={{
+            position: 'relative',
+            px: { xs: 2, md: 8 },
+            py: { xs: 6, md: 10 },
+            backgroundColor: '#18181b',
+            color: '#fff',
+            borderRadius: 3,
+            mb: 6,
+            mt: 4,
+            overflow: 'hidden',
+          }}
+        >
+          {/* 背景图片 */}
+          <Box
+            sx={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              background: `url('/keyboard.png') center/cover no-repeat`,
+              opacity: 0.18,
+              zIndex: 1,
+            }}
+          />
+          <Box sx={{ position: 'relative', zIndex: 2 }}>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 'bold',
+                textAlign: 'center',
+                mb: 6,
+                fontSize: { xs: 28, md: 36 },
+              }}
+            >
+              What Is Experimental Music?
+            </Typography>
+            <Grid container spacing={4} justifyContent="center">
+              {/* Definition 居中显示 */}
+              <Grid item xs={12} md={6}>
+                <Box
+                  sx={{
+                    backgroundColor: '#27272a',
+                    p: 3,
+                    borderRadius: 4,
+                    boxShadow: 3,
+                    mb: 4,
+                    textAlign: 'center',
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
+                    Definition
+                  </Typography>
+                  <Typography sx={{ color: '#d1d5db' }}>
+                    Music that <strong>pushes boundaries</strong> of traditional form—exploring new sounds, structures and performance methods.
+                  </Typography>
+                </Box>
+              </Grid>
+              {/* 其余分栏 */}
+              <Grid item xs={12} sm={6} md={2}>
+                <Box
+                  sx={{
+                    backgroundColor: '#27272a',
+                    p: 3,
+                    borderRadius: 4,
+                    boxShadow: 3,
+                    height: '100%',
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
+                    Origins
+                  </Typography>
+                  <ul style={{ color: '#d1d5db', paddingLeft: 18, margin: 0 }}>
+                    <li>Mid-20th-century avant-garde</li>
+                    <li>Pioneers: John Cage, Stockhausen…</li>
+                  </ul>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={2}>
+                <Box
+                  sx={{
+                    backgroundColor: '#27272a',
+                    p: 3,
+                    borderRadius: 4,
+                    boxShadow: 3,
+                    height: '100%',
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
+                    Techniques
+                  </Typography>
+                  <ul style={{ color: '#d1d5db', paddingLeft: 18, margin: 0 }}>
+                    <li>Free improvisation</li>
+                    <li>Musique concrète (found sounds)</li>
+                    <li>Electronic & tape manipulation</li>
+                  </ul>
+                </Box>
+              </Grid>
+              <Grid item xs={12} sm={6} md={2}>
+                <Box
+                  sx={{
+                    backgroundColor: '#27272a',
+                    p: 3,
+                    borderRadius: 4,
+                    boxShadow: 3,
+                    height: '100%',
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>
+                    Key Elements
+                  </Typography>
+                  <ul style={{ color: '#d1d5db', paddingLeft: 18, margin: 0 }}>
+                    <li>Unconventional instruments</li>
+                    <li>Non-musical objects</li>
+                    <li>Electroacoustic effects</li>
+                  </ul>
+                </Box>
+              </Grid>
+            </Grid>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                href="https://www.masterclass.com/articles/experimental-music-guide"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Learn more on MasterClass
+              </Button>
+            </Box>
+          </Box>
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
@@ -179,29 +256,52 @@ const Home = () => {
         </Box>
 
         <Grid container spacing={4} sx={{ mb: 8, justifyContent: 'center' }}>
-          {[features[1], features[2]].map((feature, index) => (
-            <Grid item xs={12} md={5} key={index}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
-                  <Box sx={{ mb: 2 }}>{feature.icon}</Box>
-                  <Typography gutterBottom variant="h5" component="h2">
-                    {feature.title}
-                  </Typography>
-                  <Typography color="text.secondary">
-                    {feature.description}
-                  </Typography>
-                </CardContent>
-                <CardActions sx={{ justifyContent: 'center', pb: 2 }}>
-                  <Button
-                    variant="outlined"
-                    onClick={() => navigate(user ? '/room/new' : '/login')}
-                  >
-                    Try it now
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
+          {/* Collaborate按钮置灰并加提示 */}
+          <Grid item xs={12} md={5}>
+            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
+                <Box sx={{ mb: 2 }}>{features[1].icon}</Box>
+                <Typography gutterBottom variant="h5" component="h2">
+                  {features[1].title}
+                </Typography>
+                <Typography color="text.secondary">
+                  {features[1].description}
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ justifyContent: 'center', pb: 2 }}>
+                <Button
+                  variant="outlined"
+                  disabled
+                  sx={{ cursor: 'not-allowed' }}
+                  title="This feature will be supported in the future."
+                >
+                  Try it now
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+          {/* Save & Share按钮正常 */}
+          <Grid item xs={12} md={5}>
+            <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
+                <Box sx={{ mb: 2 }}>{features[2].icon}</Box>
+                <Typography gutterBottom variant="h5" component="h2">
+                  {features[2].title}
+                </Typography>
+                <Typography color="text.secondary">
+                  {features[2].description}
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ justifyContent: 'center', pb: 2 }}>
+                <Button
+                  variant="outlined"
+                  onClick={() => navigate(user ? '/room/new' : '/login')}
+                >
+                  Try it now
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
         </Grid>
       </Container>
     </>
