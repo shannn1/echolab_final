@@ -35,7 +35,11 @@ export const AuthProvider = ({ children }) => {
       // Fetch user data
       axios.get('/api/auth/me')
         .then(res => {
-          setUser(res.data);
+          // 确保用户数据包含完整的收藏信息
+          setUser({
+            ...res.data,
+            favorites: res.data.favorites || []
+          });
         })
         .catch(err => {
           console.error('Error fetching user data:', err);
@@ -56,7 +60,11 @@ export const AuthProvider = ({ children }) => {
       const token = res.data.token;
       localStorage.setItem('token', token);
       axios.defaults.headers.common['x-auth-token'] = token;
-      setUser(res.data.user);
+      // 确保登录时也包含完整的收藏信息
+      setUser({
+        ...res.data.user,
+        favorites: res.data.user.favorites || []
+      });
       return res.data;
     } catch (err) {
       console.error('Login error:', err);

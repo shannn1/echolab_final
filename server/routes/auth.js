@@ -8,7 +8,9 @@ const auth = require('../middleware/auth');
 // Get current user
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password');
+    const user = await User.findById(req.user.id)
+      .select('-password')
+      .populate('favorites');
     res.json(user);
   } catch (err) {
     console.error(err.message);
@@ -101,7 +103,8 @@ router.post('/register', async (req, res) => {
           user: {
             id: user.id,
             username: user.username,
-            email: user.email
+            email: user.email,
+            favorites: user.favorites
           }
         });
       }
@@ -158,7 +161,8 @@ router.post('/login', async (req, res) => {
           user: {
             id: user.id,
             username: user.username,
-            email: user.email
+            email: user.email,
+            favorites: user.favorites
           }
         });
       }

@@ -42,7 +42,7 @@ import XIcon from '@mui/icons-material/Close'; // 你可以换成 X 的图标
 import { useNavigate } from 'react-router-dom';
 
 const Library = () => {
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [music, setMusic] = useState([]);
   const [playingId, setPlayingId] = useState(null);
   const [editDialog, setEditDialog] = useState(false);
@@ -52,6 +52,7 @@ const Library = () => {
     description: '',
     isPublic: true,
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   // 用于存储每个音频的ref
   const audioRefs = useRef({});
@@ -71,6 +72,13 @@ const Library = () => {
 
   const navigate = useNavigate();
 
+  // 当用户信息更新时，更新收藏状态
+  useEffect(() => {
+    if (user?.favorites) {
+      setFavorites(user.favorites);
+    }
+  }, [user]);
+
   useEffect(() => {
     fetchMusic();
     fetchFavorites();
@@ -83,14 +91,17 @@ const Library = () => {
         if (audio) audio.pause();
       });
     };
-  }, []);
+  }, [user]);
 
   const fetchMusic = async () => {
     try {
+      setIsLoading(true);
       const response = await axios.get('/api/music/library');
       setMusic(response.data);
     } catch (err) {
       console.error('Error fetching music:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -99,13 +110,13 @@ const Library = () => {
       const res = await axios.get('/api/music/plaza');
       // 只保留用户收藏的
       if (user?.favorites?.length) {
-        setFavoriteMusic(res.data.filter(m => user.favorites.includes(m._id)));
-        setFavorites(user.favorites);
+        const favoriteMusicList = res.data.filter(m => user.favorites.includes(m._id));
+        setFavoriteMusic(favoriteMusicList);
       } else {
         setFavoriteMusic([]);
-        setFavorites([]);
       }
     } catch (err) {
+      console.error('Error fetching favorites:', err);
       setFavoriteMusic([]);
     }
   };
@@ -200,16 +211,35 @@ const Library = () => {
 
   // 收藏/取消收藏
   const handleFavorite = async (musicId, isFav) => {
-    await axios.patch('/api/auth/favorite', { musicId, action: isFav ? 'remove' : 'add' });
-    let newFavs;
-    if (isFav) {
-      newFavs = favorites.filter(id => id !== musicId);
-    } else {
-      newFavs = [...favorites, musicId];
+    try {
+      const response = await axios.patch('/api/auth/favorite', { musicId, action: isFav ? 'remove' : 'add' });
+      // 更新本地收藏状态
+      let newFavs;
+      if (isFav) {
+        newFavs = favorites.filter(id => id !== musicId);
+        setFavoriteMusic(favoriteMusic.filter(m => m._id !== musicId));
+      } else {
+        newFavs = [...favorites, musicId];
+        // 从当前音乐列表中查找并添加新收藏的音乐
+        const musicToAdd = music.find(m => m._id === musicId);
+        if (musicToAdd) {
+          setFavoriteMusic([...favoriteMusic, musicToAdd]);
+        }
+      }
+      setFavorites(newFavs);
+      
+      // 更新用户信息中的收藏状态
+      if (user) {
+        const updatedUser = {
+          ...user,
+          favorites: newFavs
+        };
+        // 触发用户信息更新
+        setUser(updatedUser);
+      }
+    } catch (err) {
+      console.error('Error updating favorite:', err);
     }
-    setFavorites(newFavs);
-    setFavoriteMusic(favoriteMusic.filter(m => newFavs.includes(m._id)));
-    // 重新拉取user信息更严谨（可选）
   };
 
   return (
@@ -250,7 +280,7 @@ const Library = () => {
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <Paper sx={{ p: 3, maxWidth: 1200, mx: 'auto' }}>
-                {music.length === 0 ? (
+                {!isLoading && music.length === 0 ? (
                   <Box sx={{ textAlign: 'center', py: 4 }}>
                     <Typography variant="h6" color="text.secondary" gutterBottom>
                       Your music library is empty
