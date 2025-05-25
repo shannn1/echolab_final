@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, List, ListItemButton, ListItemText, Divider, Typography, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MusicIntroForm from '../components/MusicIntroForm';
+import axios from 'axios';
 
 const tabs = [
   { label: 'Account', value: 'account' },
@@ -14,7 +15,21 @@ const tabs = [
 const AccountPage = () => {
   const [selectedTab, setSelectedTab] = useState('account');
   const { user, logout } = useAuth();
+  const [freshUser, setFreshUser] = useState(user);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // 每次进入页面都拉取一次user信息
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get('/api/auth/me');
+        setFreshUser(res.data);
+      } catch (err) {
+        // ignore
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleTabClick = (tab) => {
     if (tab === 'logout') {
@@ -50,23 +65,23 @@ const AccountPage = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                 <Box
                   component="img"
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'U')}&background=222&color=fff&size=64`}
+                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(freshUser?.username || 'U')}&background=222&color=fff&size=64`}
                   alt="avatar"
                   sx={{ width: 64, height: 64, borderRadius: '50%', mr: 2 }}
                 />
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700 }}>{user?.username || 'User Name'}</Typography>
-                  <Typography variant="body2" color="text.secondary">{user?.email || 'user@email.com'}</Typography>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>{freshUser?.username || 'User Name'}</Typography>
+                  <Typography variant="body2" color="text.secondary">{freshUser?.email || 'user@email.com'}</Typography>
                   <Box sx={{ mt: 1 }}>
                     <Typography variant="caption" sx={{ bgcolor: 'grey.900', color: 'grey.300', px: 1.5, py: 0.5, borderRadius: 1, fontFamily: 'monospace' }}>
-                      {user?.orgId || 'org-xxxxxxxxxxxxxxxx'}
+                      {freshUser?.orgId || 'org-xxxxxxxxxxxxxxxx'}
                     </Typography>
                   </Box>
                 </Box>
               </Box>
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" gutterBottom>Music Preferences / Experience</Typography>
-                <MusicIntroForm user={user} />
+                <MusicIntroForm user={freshUser} onSaved={setFreshUser} />
               </Box>
               <Box sx={{ border: '1px solid #d32f2f', borderRadius: 2, p: 2, bgcolor: 'rgba(211,47,47,0.05)', display: 'flex', alignItems: 'center', mt: 4 }}>
                 <Box sx={{ flex: 1 }}>
@@ -107,10 +122,7 @@ const AccountPage = () => {
                   <Box sx={{ flex: 1 }}>DATE</Box>
                   <Box sx={{ flex: 1 }}>CREDITS</Box>
                 </Box>
-                <Box sx={{ display: 'flex', mb: 1 }}>
-                  <Box sx={{ flex: 1 }}>05/23/25, 11:18:55 PM</Box>
-                  <Box sx={{ flex: 1 }}>1,000</Box>
-                </Box>
+                {/* 空内容，不显示假数据 */}
               </Box>
             </>
           )}

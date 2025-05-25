@@ -16,6 +16,22 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// PATCH /me 更新musicIntro
+router.patch('/me', auth, async (req, res) => {
+  try {
+    const { musicIntro } = req.body;
+    const user = await User.findById(req.user.id);
+    if (typeof musicIntro === 'string') {
+      user.musicIntro = musicIntro;
+      await user.save();
+    }
+    res.json({ musicIntro: user.musicIntro });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
 // Register
 router.post('/register', async (req, res) => {
   try {
