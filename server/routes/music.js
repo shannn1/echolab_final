@@ -121,7 +121,7 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 // 修改生成音乐的路由 - 使用内存存储
-router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
+router.post('/generate', auth, memoryUpload.single('audio'), async (req, res) => {
   console.log('收到 /api/music/generate 请求');
   const audioFile = req.file;
   console.log('audioFile:', audioFile);
@@ -133,26 +133,30 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
       return res.status(400).json({ message: 'No audio file uploaded' });
     }
 
-    // 使用原生 Web API FormData
-    const formData = new FormData();
-    formData.append('prompt', prompt);
-    
-    // 创建 File 对象
-    const file = new File([audioFile.buffer], audioFile.originalname, {
-      type: audioFile.mimetype
-    });
-    formData.append('audio', file);
-    
-    // 确保所有非文件字段都是字符串
-    formData.append('duration', String(duration));
-    formData.append('output_format', output_format);
-    formData.append('seed', String(seed));
-    formData.append('steps', String(steps));
-    formData.append('cfg_scale', String(cfg_scale));
-    formData.append('strength', String(strength));
-
     console.log('Sending request to Stability AI API...');
-    const response = await fetch('https://api.stability.ai/v2beta/audio-to-audio', {
+    console.log('Request parameters:', {
+      prompt,
+      duration,
+      output_format,
+      steps,
+      cfg_scale,
+      strength
+    });
+
+    // 创建 FormData 对象
+    const formData = new FormData();
+    formData.append('audio', new Blob([audioFile.buffer], { type: audioFile.mimetype }));
+    formData.append('prompt', prompt);
+    formData.append('duration', duration);
+    formData.append('steps', steps);
+    formData.append('cfg_scale', cfg_scale);
+    formData.append('output_format', output_format);
+    formData.append('strength', strength);
+    if (seed) {
+      formData.append('seed', seed);
+    }
+
+    const response = await fetch('https://api.stability.ai/v2beta/audio/stable-audio-2/audio-to-audio', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.STABILITY_API_KEY}`,
@@ -161,22 +165,48 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
       body: formData
     });
 
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error('Stability AI API Error:', errorText);
+      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    const buffer = await response.arrayBuffer();
-    console.log('Received response from Stability AI API');
-
+    // 直接获取音频数据
+    const audioBuffer = await response.arrayBuffer();
+    
     // 生成唯一文件名
     const fileName = `generated_${Date.now()}.${output_format}`;
     
     // 上传到 S3
-    const s3Url = await uploadToS3(Buffer.from(buffer), fileName);
+    const s3Url = await uploadToS3(Buffer.from(audioBuffer), fileName);
+
+    // 创建新的音乐记录
+    const newMusic = new Music({
+      title: prompt, // 使用提示文本作为标题
+      description: `Generated music with prompt: ${prompt}`,
+      audioUrl: s3Url,
+      creator: req.user.id,
+      isPublic: false, // 默认设为私有
+      generationParams: {
+        prompt,
+        duration,
+        output_format,
+        steps,
+        cfg_scale,
+        strength,
+        seed: response.headers.get('seed')
+      }
+    });
+
+    await newMusic.save();
 
     res.json({ 
-      message: 'Music generated successfully',
-      audioUrl: s3Url
+      message: 'Music generated and saved successfully',
+      audioUrl: s3Url,
+      music: newMusic
     });
 
   } catch (error) {

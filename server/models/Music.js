@@ -8,6 +8,7 @@ const musicSchema = new mongoose.Schema({
   },
   description: {
     type: String,
+    required: true,
     trim: true
   },
   audioUrl: {
@@ -24,12 +25,21 @@ const musicSchema = new mongoose.Schema({
     ref: 'User'
   }],
   roomId: {
-    type: String,
-    required: true
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Room'
   },
   isPublic: {
     type: Boolean,
-    default: true
+    default: false
+  },
+  generationParams: {
+    prompt: String,
+    duration: Number,
+    output_format: String,
+    steps: Number,
+    cfg_scale: Number,
+    strength: Number,
+    seed: String
   },
   createdAt: {
     type: Date,

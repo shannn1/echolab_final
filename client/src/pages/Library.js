@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Grid,
@@ -31,7 +31,7 @@ import axios from 'axios';
 const Library = () => {
   const { user } = useAuth();
   const [music, setMusic] = useState([]);
-  const [isPlaying, setIsPlaying] = useState(null);
+  const [playingId, setPlayingId] = useState(null);
   const [editDialog, setEditDialog] = useState(false);
   const [selectedMusic, setSelectedMusic] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -40,8 +40,17 @@ const Library = () => {
     isPublic: true,
   });
 
+  // 用于存储每个音频的ref
+  const audioRefs = useRef({});
+
   useEffect(() => {
     fetchMusic();
+    // 卸载时暂停所有音频
+    return () => {
+      Object.values(audioRefs.current).forEach(audio => {
+        if (audio) audio.pause();
+      });
+    };
   }, []);
 
   const fetchMusic = async () => {
@@ -54,11 +63,26 @@ const Library = () => {
   };
 
   const handlePlayPause = (musicId) => {
-    if (isPlaying === musicId) {
-      setIsPlaying(null);
+    const currentAudio = audioRefs.current[musicId];
+    if (!currentAudio) return;
+
+    // 如果当前正在播放，暂停
+    if (playingId === musicId) {
+      currentAudio.pause();
+      setPlayingId(null);
     } else {
-      setIsPlaying(musicId);
+      // 先暂停所有音频
+      Object.entries(audioRefs.current).forEach(([id, audio]) => {
+        if (audio && id !== musicId) audio.pause();
+      });
+      currentAudio.play();
+      setPlayingId(musicId);
     }
+  };
+
+  // 当音频播放结束时，重置播放状态
+  const handleAudioEnded = () => {
+    setPlayingId(null);
   };
 
   const handleDownload = (audioUrl) => {
@@ -119,32 +143,57 @@ const Library = () => {
             <Paper sx={{ p: 3 }}>
               <List>
                 {music.map((item) => (
-                  <ListItem key={item._id}>
+                  <ListItem key={item._id} sx={{ alignItems: 'flex-start' }}>
                     <ListItemText
                       primary={item.title}
                       secondary={item.description}
                     />
+                    {/* 隐藏的audio标签 */}
+                    <audio
+                      ref={el => (audioRefs.current[item._id] = el)}
+                      src={item.audioUrl}
+                      onEnded={handleAudioEnded}
+                    />
                     <ListItemSecondaryAction>
                       <IconButton
                         edge="end"
+                        size="small"
+                        sx={{ mx: 0.5 }}
                         onClick={() => handlePlayPause(item._id)}
                       >
-                        {isPlaying === item._id ? <Pause /> : <PlayArrow />}
+                        {playingId === item._id ? <Pause fontSize="small" /> : <PlayArrow fontSize="small" />}
                       </IconButton>
                       <IconButton
                         edge="end"
+                        size="small"
+                        sx={{ mx: 0.5 }}
                         onClick={() => handleDownload(item.audioUrl)}
                       >
-                        <Download />
+                        <Download fontSize="small" />
                       </IconButton>
-                      <IconButton edge="end" onClick={() => handleShare(item._id)}>
-                        <Share />
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        sx={{ mx: 0.5 }}
+                        onClick={() => handleShare(item._id)}
+                      >
+                        <Share fontSize="small" />
                       </IconButton>
-                      <IconButton edge="end" onClick={() => handleEdit(item)}>
-                        <Edit />
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        sx={{ mx: 0.5 }}
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Edit fontSize="small" />
                       </IconButton>
-                      <IconButton edge="end" onClick={() => handleDelete(item._id)}>
-                        <Delete />
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        sx={{ mx: 0.5 }}
+                        onClick={() => handleDelete(item._id)}
+                      >
+                        <Delete fontSize="small" />
                       </IconButton>
                     </ListItemSecondaryAction>
                   </ListItem>

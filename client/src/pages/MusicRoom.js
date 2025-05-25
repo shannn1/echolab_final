@@ -133,7 +133,7 @@ const MusicRoom = () => {
       formData.append('strength', 0.75);
 
       const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/music/generate`,
+        '/api/music/generate',
         formData,
         {
           headers: {
