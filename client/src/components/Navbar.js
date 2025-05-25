@@ -33,7 +33,7 @@ const Navbar = () => {
   };
 
   return (
-    <AppBar position="static">
+    <AppBar position="fixed" sx={{ zIndex: 1201 }}>
       <Toolbar>
         <MusicNote sx={{ mr: 2 }} />
         <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
@@ -70,6 +70,7 @@ const Navbar = () => {
                 open={Boolean(anchorEl)}
                 onClose={handleClose}
               >
+                <MenuItem onClick={() => { handleClose(); navigate('/account'); }}>My Account</MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </>

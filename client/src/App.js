@@ -8,8 +8,10 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import MusicRoom from './pages/MusicRoom';
 import Library from './pages/Library';
+import AccountPage from './pages/Account';
 import { AuthProvider } from './context/AuthContext';
 import { Toaster } from 'react-hot-toast';
+import { Box } from '@mui/material';
 
 const theme = createTheme({
   palette: {
@@ -31,13 +33,16 @@ function App() {
         <Toaster position="top-right" />
         <Router>
           <Navbar />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/room/:roomId" element={<MusicRoom />} />
-            <Route path="/library" element={<Library />} />
-          </Routes>
+          <Box sx={{ pt: { xs: 7, md: 8 } }}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/room/:roomId" element={<MusicRoom />} />
+              <Route path="/library" element={<Library />} />
+              <Route path="/account" element={<AccountPage />} />
+            </Routes>
+          </Box>
         </Router>
       </AuthProvider>
     </ThemeProvider>

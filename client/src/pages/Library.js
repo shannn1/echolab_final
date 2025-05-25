@@ -16,6 +16,8 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  ListItemIcon,
+  Tooltip,
 } from '@mui/material';
 import {
   PlayArrow,
@@ -24,9 +26,14 @@ import {
   Share,
   Delete,
   Edit,
+  ContentCopy,
+  Facebook,
+  Email,
+  WhatsApp,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import XIcon from '@mui/icons-material/Close'; // 你可以换成 X 的图标
 
 const Library = () => {
   const { user } = useAuth();
@@ -46,6 +53,10 @@ const Library = () => {
   // 限制描述长度
   const MAX_DESC_LENGTH = 36; // "Generated music with prompt: music played by marimba".length = 46, 但36更适合视觉
   const MAX_TITLE_LENGTH = 36;
+
+  const [shareOpen, setShareOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareMusic, setShareMusic] = useState(null);
 
   useEffect(() => {
     fetchMusic();
@@ -98,13 +109,15 @@ const Library = () => {
     document.body.removeChild(link);
   };
 
-  const handleShare = async (musicId) => {
-    try {
-      await axios.post(`/api/music/${musicId}/share`);
-      // Handle successful share
-    } catch (err) {
-      console.error('Error sharing music:', err);
-    }
+  const handleShare = (music) => {
+    setShareMusic(music);
+    setShareUrl(music.audioUrl); // 或者你想分享的完整链接
+    setShareOpen(true);
+  };
+
+  const handleCloseShare = () => {
+    setShareOpen(false);
+    setShareMusic(null);
   };
 
   const handleDelete = async (musicId) => {
@@ -244,7 +257,7 @@ const Library = () => {
                           edge="end"
                           size="small"
                           sx={{ mx: 0.5 }}
-                          onClick={() => handleShare(item._id)}
+                          onClick={() => handleShare(item)}
                         >
                           <Share fontSize="small" />
                         </IconButton>
@@ -303,6 +316,44 @@ const Library = () => {
               Save
             </Button>
           </DialogActions>
+        </Dialog>
+
+        <Dialog open={shareOpen} onClose={handleCloseShare}>
+          <DialogTitle>Share</DialogTitle>
+          <DialogContent>
+            <List>
+              <ListItem button onClick={() => {navigator.clipboard.writeText(shareUrl); handleCloseShare();}}>
+                <ListItemIcon>
+                  <ContentCopy />
+                </ListItemIcon>
+                <ListItemText primary="Copy link" sx={{ color: '#fff' }} />
+              </ListItem>
+              <ListItem button component="a" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`} target="_blank" rel="noopener noreferrer">
+                <ListItemIcon>
+                  <Facebook />
+                </ListItemIcon>
+                <ListItemText primary="Facebook" sx={{ color: '#fff' }} />
+              </ListItem>
+              <ListItem button component="a" href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}`} target="_blank" rel="noopener noreferrer">
+                <ListItemIcon>
+                  <span style={{fontSize: 24, fontWeight: 'bold'}}>𝕏</span>
+                </ListItemIcon>
+                <ListItemText primary="X" sx={{ color: '#fff' }} />
+              </ListItem>
+              <ListItem button component="a" href={`https://wa.me/?text=${encodeURIComponent(shareUrl)}`} target="_blank" rel="noopener noreferrer">
+                <ListItemIcon>
+                  <WhatsApp />
+                </ListItemIcon>
+                <ListItemText primary="WhatsApp" sx={{ color: '#fff' }} />
+              </ListItem>
+              <ListItem button component="a" href={`mailto:?subject=Check out this music&body=${encodeURIComponent(shareUrl)}`}>
+                <ListItemIcon>
+                  <Email />
+                </ListItemIcon>
+                <ListItemText primary="Email" sx={{ color: '#fff' }} />
+              </ListItem>
+            </List>
+          </DialogContent>
         </Dialog>
       </Box>
     </Container>
