@@ -127,6 +127,8 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
   console.log('收到 /api/music/generate 请求');
   const audioFile = req.file;
   console.log('audioFile:', audioFile);
+  let tempFilePath = null;  // 声明在 try 块外面
+
   try {
     const { prompt, duration = 30, output_format = 'mp3', seed, steps = 50, cfg_scale = 7, strength = 0.75 } = req.body;
 
@@ -138,7 +140,7 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
     formData.append('prompt', prompt);
     
     // 创建临时文件
-    const tempFilePath = path.join(tempDir, `${Date.now()}-${audioFile.originalname}`);
+    tempFilePath = path.join(tempDir, `${Date.now()}-${audioFile.originalname}`);
     fs.writeFileSync(tempFilePath, audioFile.buffer);
     
     // 使用文件流，并确保提供完整的文件信息
@@ -146,7 +148,11 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
     formData.append('audio', fileStream, {
       filename: audioFile.originalname,
       contentType: audioFile.mimetype,
-      knownLength: audioFile.size
+      knownLength: audioFile.size,
+      header: {
+        'Content-Type': audioFile.mimetype,
+        'Content-Disposition': `form-data; name="audio"; filename="${audioFile.originalname}"`
+      }
     });
     
     formData.append('duration', duration);
@@ -177,7 +183,9 @@ router.post('/generate', memoryUpload.single('audio'), async (req, res) => {
     const s3Url = await uploadToS3(response.data, fileName);
 
     // 清理临时文件
-    fs.unlinkSync(tempFilePath);
+    if (tempFilePath && fs.existsSync(tempFilePath)) {
+      fs.unlinkSync(tempFilePath);
+    }
 
     res.json({ 
       message: 'Music generated successfully',
