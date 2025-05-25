@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: echolab-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: STABILITY_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        value: https://echolab2-0.vercel.app
+      - key: PORT
+        value: 5000
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false 
