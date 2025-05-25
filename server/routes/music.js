@@ -128,10 +128,7 @@ router.post('/generate', upload.single('audio'), async (req, res) => {
 
     const formData = new FormData();
     formData.append('prompt', prompt);
-    formData.append('audio', audioFile.buffer, {
-      filename: audioFile.originalname || 'audio.mp3',
-      contentType: audioFile.mimetype || 'audio/mpeg'
-    });
+    formData.append('audio', audioFile.buffer, audioFile.originalname || 'audio.mp3');
     formData.append('duration', duration);
     formData.append('output_format', output_format);
     formData.append('seed', seed);
