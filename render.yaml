@@ -17,7 +17,7 @@ services:
       - key: FRONTEND_URL
         value: https://echolab-final.vercel.app
       - key: PORT
-        value: 3000
+        value: 5000
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
