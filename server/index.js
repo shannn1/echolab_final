@@ -13,7 +13,7 @@ const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production' 
-      ? [process.env.FRONTEND_URL || 'echolab-final.vercel.app']
+      ? [process.env.FRONTEND_URL || 'https://echolab-final.vercel.app']
       : "http://localhost:3000",
     methods: ["GET", "POST"],
     credentials: true
@@ -24,7 +24,7 @@ const io = socketIo(server, {
 app.use(cors({
   origin: [
     'http://localhost:3000', // 本地开发
-    'https://your-vercel-app.vercel.app' // 你的 Vercel 域名
+    'https://echolab-final.vercel.app' // 你的 Vercel 域名
   ],
   credentials: true
 }));
