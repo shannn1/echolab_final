@@ -25,6 +25,8 @@ const MusicPlaza = () => {
   const audioRefs = useRef({});
   const [selectedMoods, setSelectedMoods] = useState([]);
   const [selectedInstruments, setSelectedInstruments] = useState([]);
+  const [loadingStates, setLoadingStates] = useState({});
+  const [errorStates, setErrorStates] = useState({});
 
   useEffect(() => {
     fetchPlaza();
@@ -40,28 +42,20 @@ const MusicPlaza = () => {
     }
   };
 
-  const handlePlayPause = (id, url) => {
-    console.log('Playing audio:', { id, url });
+  const handlePlayPause = (id) => {
+    const currentAudio = audioRefs.current[id];
+    if (!currentAudio) return;
+
     if (playingId === id) {
-      audioRefs.current[id]?.pause();
+      currentAudio.pause();
       setPlayingId(null);
     } else {
-      Object.values(audioRefs.current).forEach(a => a && a.pause());
-      if (audioRefs.current[id]) {
-        const playPromise = audioRefs.current[id].play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
-              setPlayingId(id);
-            })
-            .catch(err => {
-              console.error('Error playing audio:', err);
-              audioRefs.current[id].load();
-            });
-        }
-      } else {
-        console.error('Audio element not found for id:', id);
-      }
+      // 暂停其它音频
+      Object.entries(audioRefs.current).forEach(([otherId, audio]) => {
+        if (audio && otherId !== id) audio.pause();
+      });
+      currentAudio.play();
+      setPlayingId(id);
     }
   };
 
@@ -128,26 +122,23 @@ const MusicPlaza = () => {
         <List>
           {filteredList.map(item => (
             <ListItem key={item._id} sx={{ bgcolor: '#232323', borderRadius: 2, mb: 2, display: 'flex', alignItems: 'center' }}>
-              <IconButton onClick={() => handlePlayPause(item._id, item.audioUrl)}>
+              <IconButton 
+                onClick={() => handlePlayPause(item._id)}
+                disabled={loadingStates[item._id]}
+              >
                 {playingId === item._id ? <Pause /> : <PlayArrow />}
               </IconButton>
               <audio
-                ref={el => {
-                  if (el) {
-                    console.log('Audio element created for:', item._id, item.audioUrl);
-                    audioRefs.current[item._id] = el;
-                    el.load();
-                  }
-                }}
+                ref={el => (audioRefs.current[item._id] = el)}
                 src={item.audioUrl}
                 onEnded={() => setPlayingId(null)}
-                onError={(e) => {
-                  console.error('Audio error:', e);
-                  console.error('Audio URL:', item.audioUrl);
-                }}
-                preload="auto"
                 style={{ display: 'none' }}
               />
+              {errorStates[item._id] && (
+                <Typography color="error" variant="caption" sx={{ ml: 1 }}>
+                  {errorStates[item._id]}
+                </Typography>
+              )}
               <ListItemText
                 primary={<Typography sx={{ fontWeight: 600 }}>{item.title}</Typography>}
                 secondary={<Typography sx={{ color: 'text.secondary' }}>{item.description}</Typography>}
