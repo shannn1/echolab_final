@@ -31,18 +31,37 @@ const MusicPlaza = () => {
   }, []);
 
   const fetchPlaza = async () => {
-    const res = await axios.get('/api/music/plaza');
-    setMusicList(res.data);
+    try {
+      const res = await axios.get('/api/music/plaza');
+      console.log('Fetched plaza music:', res.data);
+      setMusicList(res.data);
+    } catch (err) {
+      console.error('Error fetching plaza music:', err);
+    }
   };
 
   const handlePlayPause = (id, url) => {
+    console.log('Playing audio:', { id, url });
     if (playingId === id) {
       audioRefs.current[id]?.pause();
       setPlayingId(null);
     } else {
       Object.values(audioRefs.current).forEach(a => a && a.pause());
-      audioRefs.current[id].play();
-      setPlayingId(id);
+      if (audioRefs.current[id]) {
+        const playPromise = audioRefs.current[id].play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setPlayingId(id);
+            })
+            .catch(err => {
+              console.error('Error playing audio:', err);
+              audioRefs.current[id].load();
+            });
+        }
+      } else {
+        console.error('Audio element not found for id:', id);
+      }
     }
   };
 
@@ -113,9 +132,20 @@ const MusicPlaza = () => {
                 {playingId === item._id ? <Pause /> : <PlayArrow />}
               </IconButton>
               <audio
-                ref={el => (audioRefs.current[item._id] = el)}
+                ref={el => {
+                  if (el) {
+                    console.log('Audio element created for:', item._id, item.audioUrl);
+                    audioRefs.current[item._id] = el;
+                    el.load();
+                  }
+                }}
                 src={item.audioUrl}
                 onEnded={() => setPlayingId(null)}
+                onError={(e) => {
+                  console.error('Audio error:', e);
+                  console.error('Audio URL:', item.audioUrl);
+                }}
+                preload="auto"
                 style={{ display: 'none' }}
               />
               <ListItemText
