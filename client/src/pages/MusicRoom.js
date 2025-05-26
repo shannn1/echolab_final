@@ -276,16 +276,45 @@ const MusicRoom = () => {
           <Typography variant="h4" gutterBottom>
             Music Room: {roomId}
           </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            To generate music, please upload an <b>audio sample</b> and provide a natural language description. <br />
+            The audio sample can include sound effects, styles, or any elements you want the model to learn from.
+          </Typography>
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {error}
             </Alert>
           )}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Create Music
-            </Typography>
-            <Box sx={{ mb: 3 }}>
+          <Paper sx={{ p: 3, mb: 3, position: 'relative', overflow: 'hidden',
+            backgroundImage: 'url(/pic6.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            '::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              bgcolor: 'rgba(30,30,30,0.45)',
+              zIndex: 1,
+            }
+          }}>
+            <Box sx={{ position: 'relative', zIndex: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Create Music
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+                <label htmlFor="audio-file">
+                  <Button variant="contained" component="span">
+                    Upload Audio
+                  </Button>
+                </label>
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                  Supported Formats: mp3, wav<br />
+                  Audio must be between 6 and 190 seconds long
+                </Typography>
+              </Box>
               <input
                 accept="audio/*"
                 type="file"
@@ -293,143 +322,149 @@ const MusicRoom = () => {
                 style={{ display: 'none' }}
                 id="audio-file"
               />
-              <label htmlFor="audio-file">
-                <Button variant="contained" component="span">
-                  Upload Audio
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                sx={{ mb: 2 }}
+              />
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  startIcon={isPlaying ? <Pause /> : <PlayArrow />}
+                  onClick={handlePlayPause}
+                  disabled={!audioFile}
+                >
+                  {isPlaying ? 'Pause Uploaded Audio' : 'Play Uploaded Audio'}
                 </Button>
-              </label>
-              {audioFile && (
-                <Typography variant="body2" sx={{ mt: 1 }}>
-                  Selected file: {audioFile.name}
-                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<Save />}
+                  onClick={handleSave}
+                  disabled={!audioFile || !description}
+                >
+                  Save
+                </Button>
+              </Box>
+              <Box sx={{ mt: 4 }}>
+                <Button
+                  variant="contained"
+                  onClick={handleGenerate}
+                  disabled={!audioFile || !description || isGenerating}
+                  sx={{ mt: 2 }}
+                  title="Generating music will consume your token upon success."
+                >
+                  {isGenerating ? (
+                    <CircularProgress size={24} />
+                  ) : (
+                    'Generate Music'
+                  )}
+                </Button>
+              </Box>
+              {isGenerating && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                  <CircularProgress />
+                  <Typography sx={{ ml: 2 }}>
+                    Generating music, this may take a while...
+                  </Typography>
+                </Box>
               )}
             </Box>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              label="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              sx={{ mb: 2 }}
-            />
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button
-                variant="contained"
-                startIcon={isPlaying ? <Pause /> : <PlayArrow />}
-                onClick={handlePlayPause}
-                disabled={!audioFile}
-              >
-                {isPlaying ? 'Pause Uploaded Audio' : 'Play Uploaded Audio'}
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<Save />}
-                onClick={handleSave}
-                disabled={!audioFile || !description}
-              >
-                Save
-              </Button>
-            </Box>
-            <Box sx={{ mt: 4 }}>
-              <Button
-                variant="contained"
-                onClick={handleGenerate}
-                disabled={!audioFile || !description || isGenerating}
-                sx={{ mt: 2 }}
-                title="Generating music will consume your token upon success."
-              >
-                {isGenerating ? (
-                  <CircularProgress size={24} />
-                ) : (
-                  'Generate Music'
-                )}
-              </Button>
-            </Box>
-            {isGenerating && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                <CircularProgress />
-                <Typography sx={{ ml: 2 }}>
-                  Generating music, this may take a while...
-                </Typography>
-              </Box>
-            )}
           </Paper>
 
           {/* 多轮生成音乐展示区 */}
           {generatedList.map((item, idx) => (
-            <Box key={idx} sx={{ mt: 4, mb: 4, p: 3, bgcolor: '#232323', borderRadius: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Music Generated {idx + 1}
-              </Typography>
-              <audio controls style={{ width: '100%' }}>
-                <source src={item.url} type="audio/mpeg" />
-                Your browser does not support the audio element.
-              </audio>
-              <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
-                Prompt: {item.description}
-              </Typography>
-              {/* 只在最后一项下方显示操作区 */}
-              {idx === generatedList.length - 1 && (
-                <Box sx={{ mt: 2 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleSaveGenerated}
-                    disabled={item.isSaved || saving}
-                    startIcon={<Save />}
-                  >
-                    {saving ? 'Saving...' : item.isSaved ? 'Saved' : 'Save to Library'}
-                  </Button>
-                  <Tooltip title={item.isSaved ? '' : 'Please save to library first'}>
-                    <span>
-                      <Button
-                        variant="outlined"
-                        color="secondary"
-                        startIcon={<Edit />}
-                        disabled={!item.isSaved || refineLoading}
-                        onClick={handleRefineMusicClick}
-                        sx={{ ml: 1 }}
-                      >
-                        Refine Music
-                      </Button>
-                    </span>
-                  </Tooltip>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<Delete />}
-                    onClick={handleDiscard}
-                    sx={{ ml: 1 }}
-                  >
-                    Discard
-                  </Button>
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={3}
-                    label="New Description"
-                    value={refineDescription}
-                    onChange={e => setRefineDescription(e.target.value)}
-                    sx={{ mt: 2 }}
-                  />
-                  <Button
-                    variant="contained"
-                    onClick={handleRefine}
-                    disabled={refineLoading || !refineDescription}
-                    sx={{ mt: 1 }}
-                  >
-                    {refineLoading ? <CircularProgress size={22} /> : 'Generate Music'}
-                  </Button>
-                  {refineLoading && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                      <CircularProgress size={22} />
-                      <Typography sx={{ ml: 2 }}>Generating music, this may take a while...</Typography>
-                    </Box>
-                  )}
-                  {refineError && <Typography color="error">{refineError}</Typography>}
-                </Box>
-              )}
+            <Box key={idx} sx={{ mt: 4, mb: 4, p: 3, borderRadius: 3, position: 'relative', overflow: 'hidden',
+              backgroundImage: 'url(/pic6.png)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              '::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                bgcolor: 'rgba(30,30,30,0.45)',
+                zIndex: 1,
+              }
+            }}>
+              <Box sx={{ position: 'relative', zIndex: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                  Music Generated {idx + 1}
+                </Typography>
+                <audio controls style={{ width: '100%' }}>
+                  <source src={item.url} type="audio/mpeg" />
+                  Your browser does not support the audio element.
+                </audio>
+                <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+                  Prompt: {item.description}
+                </Typography>
+                {/* 只在最后一项下方显示操作区 */}
+                {idx === generatedList.length - 1 && (
+                  <Box sx={{ mt: 2 }}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleSaveGenerated}
+                      disabled={item.isSaved || saving}
+                      startIcon={<Save />}
+                    >
+                      {saving ? 'Saving...' : item.isSaved ? 'Saved' : 'Save to Library'}
+                    </Button>
+                    <Tooltip title={item.isSaved ? '' : 'Please save to library first'}>
+                      <span>
+                        <Button
+                          variant="outlined"
+                          color="secondary"
+                          startIcon={<Edit />}
+                          disabled={!item.isSaved || refineLoading}
+                          onClick={handleRefineMusicClick}
+                          sx={{ ml: 1 }}
+                        >
+                          Refine Music
+                        </Button>
+                      </span>
+                    </Tooltip>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={handleDiscard}
+                      sx={{ ml: 1 }}
+                    >
+                      Discard
+                    </Button>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={3}
+                      label="New Description"
+                      value={refineDescription}
+                      onChange={e => setRefineDescription(e.target.value)}
+                      sx={{ mt: 2 }}
+                    />
+                    <Button
+                      variant="contained"
+                      onClick={handleRefine}
+                      disabled={refineLoading || !refineDescription}
+                      sx={{ mt: 1 }}
+                    >
+                      {refineLoading ? <CircularProgress size={22} /> : 'Generate Music'}
+                    </Button>
+                    {refineLoading && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                        <CircularProgress size={22} />
+                        <Typography sx={{ ml: 2 }}>Generating music, this may take a while...</Typography>
+                      </Box>
+                    )}
+                    {refineError && <Typography color="error">{refineError}</Typography>}
+                  </Box>
+                )}
+              </Box>
             </Box>
           ))}
         </Box>
