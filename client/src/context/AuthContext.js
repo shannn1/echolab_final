@@ -61,11 +61,12 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token);
       axios.defaults.headers.common['x-auth-token'] = token;
       // 确保登录时也包含完整的收藏信息
-      setUser({
+      const userData = {
         ...res.data.user,
         favorites: res.data.user.favorites || []
-      });
-      return res.data;
+      };
+      setUser(userData);
+      return { ...res.data, user: userData };
     } catch (err) {
       console.error('Login error:', err);
       throw err;
@@ -78,8 +79,12 @@ export const AuthProvider = ({ children }) => {
       const token = res.data.token;
       localStorage.setItem('token', token);
       axios.defaults.headers.common['x-auth-token'] = token;
-      setUser(res.data.user);
-      return res.data;
+      const userData = {
+        ...res.data.user,
+        favorites: res.data.user.favorites || []
+      };
+      setUser(userData);
+      return { ...res.data, user: userData };
     } catch (err) {
       console.error('Registration error:', err);
       throw err;

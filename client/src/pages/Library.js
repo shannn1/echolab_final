@@ -67,7 +67,7 @@ const Library = () => {
 
   // 收藏相关
   const [favoriteMusic, setFavoriteMusic] = useState([]);
-  const [favorites, setFavorites] = useState(user?.favorites || []);
+  const [favorites, setFavorites] = useState([]);
   const favoriteAudioRefs = useRef({});
 
   const navigate = useNavigate();
@@ -76,12 +76,15 @@ const Library = () => {
   useEffect(() => {
     if (user?.favorites) {
       setFavorites(user.favorites);
+      fetchFavorites();
     }
   }, [user]);
 
   useEffect(() => {
     fetchMusic();
-    fetchFavorites();
+    if (user?.favorites) {
+      fetchFavorites();
+    }
     // 卸载时暂停所有音频
     return () => {
       Object.values(audioRefs.current).forEach(audio => {
@@ -91,7 +94,7 @@ const Library = () => {
         if (audio) audio.pause();
       });
     };
-  }, [user]);
+  }, []);
 
   const fetchMusic = async () => {
     try {
@@ -210,35 +213,39 @@ const Library = () => {
   };
 
   // 收藏/取消收藏
-  const handleFavorite = async (musicId, isFav) => {
+  const handleFavorite = async (musicId, currentIsFav) => {
     try {
-      const response = await axios.patch('/api/auth/favorite', { musicId, action: isFav ? 'remove' : 'add' });
+      // 计算新的收藏状态（取反）
+      const newIsFav = !currentIsFav;
+      
+      const response = await axios.patch('/api/auth/favorite', {
+        musicId,
+        action: newIsFav ? 'add' : 'remove'
+      });
+      
       // 更新本地收藏状态
-      let newFavs;
-      if (isFav) {
-        newFavs = favorites.filter(id => id !== musicId);
-        setFavoriteMusic(favoriteMusic.filter(m => m._id !== musicId));
-      } else {
-        newFavs = [...favorites, musicId];
-        // 从当前音乐列表中查找并添加新收藏的音乐
+      const newFavorites = newIsFav
+        ? [...favorites, musicId]
+        : favorites.filter(id => id !== musicId);
+      setFavorites(newFavorites);
+      
+      // 更新 AuthContext 中的用户信息
+      setUser(prevUser => ({
+        ...prevUser,
+        favorites: newFavorites
+      }));
+
+      // 更新收藏音乐列表
+      if (newIsFav) {
         const musicToAdd = music.find(m => m._id === musicId);
         if (musicToAdd) {
-          setFavoriteMusic([...favoriteMusic, musicToAdd]);
+          setFavoriteMusic(prev => [...prev, musicToAdd]);
         }
-      }
-      setFavorites(newFavs);
-      
-      // 更新用户信息中的收藏状态
-      if (user) {
-        const updatedUser = {
-          ...user,
-          favorites: newFavs
-        };
-        // 触发用户信息更新
-        setUser(updatedUser);
+      } else {
+        setFavoriteMusic(prev => prev.filter(m => m._id !== musicId));
       }
     } catch (err) {
-      console.error('Error updating favorite:', err);
+      console.error('Error updating favorite status:', err);
     }
   };
 
